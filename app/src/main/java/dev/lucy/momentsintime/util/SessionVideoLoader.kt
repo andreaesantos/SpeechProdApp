@@ -20,7 +20,7 @@ class SessionVideoLoader(private val context: Context) {
      * @param sessionNumber The session number (1 or 2)
      * @return List of video file names for the specified session
      */
-    fun loadVideosForSession(sessionNumber: Int): List<String> {
+    fun loadVideosForSession(sessionNumber: Int, trialsPerBlock: Int): List<String> {
         val videoFiles = mutableListOf<String>()
         
         try {
@@ -60,11 +60,14 @@ class SessionVideoLoader(private val context: Context) {
             }
             
             reader.close()
-            
-            Log.d(TAG, "Loaded ${videoFiles.size} videos for session $sessionNumber")
 
-            // shuffle order of video files
-            videoFiles.shuffle()
+            // Shuffle within blocks of 10
+            for (i in videoFiles.indices step trialsPerBlock) {
+                val end = minOf(i + trialsPerBlock, videoFiles.size)
+                val sublist = videoFiles.subList(i, end)
+                sublist.shuffle()
+            }
+            Log.d(TAG, "Loaded ${videoFiles.size} videos for session $sessionNumber")
 
         } catch (e: Exception) {
             Log.e(TAG, "Error loading videos for session $sessionNumber: ${e.message}", e)

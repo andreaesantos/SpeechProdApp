@@ -111,7 +111,7 @@ class ExperimentActivity : BaseExperimentActivity() {
         )
         
         // Load videos for current session from CSV
-        videoQueue = videoLoader.loadVideosForSession(config?.sessionNumber ?: 1)
+        videoQueue = videoLoader.loadVideosForSession(config?.sessionNumber ?: 1, config?.trialsPerBlock ?: 10)
         
         // Validate we got enough videos
         val requiredVideos = (config?.blocks ?: 2) * (config?.trialsPerBlock ?: 1)
