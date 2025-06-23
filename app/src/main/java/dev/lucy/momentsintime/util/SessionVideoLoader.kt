@@ -12,7 +12,7 @@ class SessionVideoLoader(private val context: Context) {
     
     companion object {
         private const val TAG = "SessionVideoLoader"
-        private const val CSV_FILE_NAME = "found_files_with_session"
+        private const val CSV_FILE_NAME = "final_video_list"
     }
     
     /**
@@ -49,7 +49,7 @@ class SessionVideoLoader(private val context: Context) {
             // Read each line and filter by session number
             while (reader.readLine()?.also { line = it } != null) {
                 val columns = line.split(",")
-                val fileSession = columns[columns.size -1 ].trim().toIntOrNull()
+                val fileSession = columns[columns.size -2 ].trim().toIntOrNull()
                     
                 if (fileSession == sessionNumber) {
                     // Add the video file name to the list

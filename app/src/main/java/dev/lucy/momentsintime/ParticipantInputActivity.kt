@@ -136,6 +136,49 @@ fun ParticipantInputScreen(onStartExperiment: (Int, Int) -> Unit) {
                 )
             }
         }
+        // another row of session
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ){
+            // Session 3 radio button
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable { sessionNumber = 3 }
+            ) {
+                RadioButton(
+                    selected = sessionNumber == 3,
+                    onClick = { sessionNumber = 3 }
+                )
+                Text(
+                    text = "Session 3",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(start = 8.dp)
+                )
+            }
+
+            // Session 4 radio button
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable { sessionNumber = 4 }
+            ) {
+                RadioButton(
+                    selected = sessionNumber == 4,
+                    onClick = { sessionNumber = 4 }
+                )
+                Text(
+                    text = "Session 4",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(start = 8.dp)
+                )
+            }
+        }
         
         Button(
             onClick = {
