@@ -1,4 +1,4 @@
-package dev.lucy.momentsintime
+package dev.andrea.perroquet
 
 import android.content.Intent
 import android.os.Bundle
@@ -14,7 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import dev.lucy.momentsintime.ui.theme.MyApplicationTheme
+import dev.andrea.perroquet.ui.theme.MyApplicationTheme
 import java.time.LocalDate
 
 class ParticipantInputActivity : ComponentActivity() {

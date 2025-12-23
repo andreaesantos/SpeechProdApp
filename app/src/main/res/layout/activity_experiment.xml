@@ -107,7 +107,7 @@
                 android:layout_gravity="center"
                 android:visibility="gone">
                 
-                <dev.lucy.momentsintime.CircularCountdownView
+                <dev.andrea.perroquet.CircularCountdownView
                     android:id="@+id/recordingCountdownView"
                     android:layout_width="150dp"
                     android:layout_height="150dp"

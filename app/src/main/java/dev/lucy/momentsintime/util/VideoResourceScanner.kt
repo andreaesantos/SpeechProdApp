@@ -1,4 +1,4 @@
-package dev.lucy.momentsintime.util
+package dev.andrea.perroquet.util
 
 import android.content.Context
 import android.util.Log

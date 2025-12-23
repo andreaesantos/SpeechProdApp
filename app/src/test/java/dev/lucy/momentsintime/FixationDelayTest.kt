@@ -1,4 +1,4 @@
-package dev.lucy.momentsintime
+package dev.andrea.perroquet
 
 import android.os.SystemClock
 import androidx.test.ext.junit.runners.AndroidJUnit4

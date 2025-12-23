@@ -1,4 +1,4 @@
-package dev.lucy.momentsintime
+package dev.andrea.perroquet
 
 /**
  * Represents the different states of the experiment.

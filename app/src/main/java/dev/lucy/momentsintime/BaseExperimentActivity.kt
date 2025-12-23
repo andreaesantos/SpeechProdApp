@@ -1,4 +1,4 @@
-package dev.lucy.momentsintime
+package dev.andrea.perroquet
 
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -19,7 +19,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
-import dev.lucy.momentsintime.logging.EventType
+import dev.andrea.perroquet.logging.EventType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -79,7 +79,7 @@ abstract class BaseExperimentActivity : AppCompatActivity() {
                 if (isBatteryLow) {
                     Log.w(TAG, "Battery level low: $batteryLevel%")
                     try {
-                        val logger = dev.lucy.momentsintime.logging.EventLogger.getInstance()
+                        val logger = dev.andrea.perroquet.logging.EventLogger.getInstance()
                         logger.logEvent(
                             EventType.BATTERY_WARNING,
                         )
@@ -126,7 +126,7 @@ abstract class BaseExperimentActivity : AppCompatActivity() {
      */
     private fun logStateTransition(state: ExperimentState) {
         try {
-            val logger = dev.lucy.momentsintime.logging.EventLogger.getInstance()
+            val logger = dev.andrea.perroquet.logging.EventLogger.getInstance()
 //            logger.logStateChange(state.name)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to log state transition: ${e.message}")
@@ -257,7 +257,7 @@ abstract class BaseExperimentActivity : AppCompatActivity() {
         
         try {
             // Log the error
-            val logger = dev.lucy.momentsintime.logging.EventLogger.getInstance()
+            val logger = dev.andrea.perroquet.logging.EventLogger.getInstance()
             logger.logError("$errorSource error: $errorMessage")
             
             // Save logs immediately in case of crash
@@ -328,8 +328,8 @@ abstract class BaseExperimentActivity : AppCompatActivity() {
             // Log video start and send trigger (non-blocking)
             lifecycleScope.launch(Dispatchers.IO) {
                 try {
-                    val logger = dev.lucy.momentsintime.logging.EventLogger.getInstance()
-                    val eventType = dev.lucy.momentsintime.logging.EventType.VIDEO_START
+                    val logger = dev.andrea.perroquet.logging.EventLogger.getInstance()
+                    val eventType = dev.andrea.perroquet.logging.EventType.VIDEO_START
                     
                     // Log the event
                     logger.logVideoEvent(
@@ -401,8 +401,8 @@ abstract class BaseExperimentActivity : AppCompatActivity() {
             // Log video end and send trigger (non-blocking)
             lifecycleScope.launch(Dispatchers.IO) {
                 try {
-                    val logger = dev.lucy.momentsintime.logging.EventLogger.getInstance()
-                    val eventType = dev.lucy.momentsintime.logging.EventType.VIDEO_END
+                    val logger = dev.andrea.perroquet.logging.EventLogger.getInstance()
+                    val eventType = dev.andrea.perroquet.logging.EventType.VIDEO_END
                     
                     // Log the event
                     logger.logVideoEvent(

@@ -1,4 +1,4 @@
-package dev.lucy.momentsintime.ui.theme
+package dev.andrea.perroquet.ui.theme
 
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme

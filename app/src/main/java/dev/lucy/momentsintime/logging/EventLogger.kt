@@ -1,4 +1,4 @@
-package dev.lucy.momentsintime.logging
+package dev.andrea.perroquet.logging
 
 import android.content.Context
 import android.os.SystemClock

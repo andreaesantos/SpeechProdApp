@@ -1,4 +1,4 @@
-package dev.lucy.momentsintime
+package dev.andrea.perroquet
 
 import android.Manifest
 import android.content.Context
@@ -85,7 +85,7 @@ class AudioRecorder(private val context: Context) {
             
             // Try to get audio directory from EventLogger, fall back to default if not available
             val outputDir = try {
-                dev.lucy.momentsintime.logging.EventLogger.getInstance().getAudioDirectory()
+                dev.andrea.perroquet.logging.EventLogger.getInstance().getAudioDirectory()
             } catch (e: Exception) {
                 Log.e(TAG, "Error getting audio directory from EventLogger, using default", e)
                 val participantDir = File(context.getExternalFilesDir(null), "participant_$participantId")
@@ -180,8 +180,8 @@ class AudioRecorder(private val context: Context) {
             // Log recording start event
             try {
                 val fileName = outputFile?.name ?: "unknown_file.wav"
-                dev.lucy.momentsintime.logging.EventLogger.getInstance().logRecordingEvent(
-                    dev.lucy.momentsintime.logging.EventType.RECORDING_START,
+                dev.andrea.perroquet.logging.EventLogger.getInstance().logRecordingEvent(
+                    dev.andrea.perroquet.logging.EventType.RECORDING_START,
                     blockNumber,
                     trialNumber,
                     fileName

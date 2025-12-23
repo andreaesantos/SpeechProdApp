@@ -1,4 +1,4 @@
-package dev.lucy.momentsintime
+package dev.andrea.perroquet
 
 import android.content.Context
 import android.graphics.Canvas

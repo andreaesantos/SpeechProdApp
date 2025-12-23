@@ -1,4 +1,4 @@
-package dev.lucy.momentsintime
+package dev.andrea.perroquet
 
 import android.Manifest
 import android.app.AlertDialog
@@ -31,10 +31,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.time.LocalDate
-import dev.lucy.momentsintime.logging.EventLogger
-import dev.lucy.momentsintime.logging.EventType
-import dev.lucy.momentsintime.usbserial.SerialPortHelper
-import dev.lucy.momentsintime.util.SessionVideoLoader
+import dev.andrea.perroquet.logging.EventLogger
+import dev.andrea.perroquet.logging.EventType
+import dev.andrea.perroquet.usbserial.SerialPortHelper
+import dev.andrea.perroquet.util.SessionVideoLoader
 
 class ExperimentActivity : BaseExperimentActivity() {
     

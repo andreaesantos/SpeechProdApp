@@ -1,4 +1,4 @@
-package dev.lucy.momentsintime.usbserial;
+package dev.andrea.perroquet.usbserial;
 
 import android.app.Activity;
 import android.content.BroadcastReceiver;

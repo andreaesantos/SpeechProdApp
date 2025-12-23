@@ -1,4 +1,4 @@
-package dev.lucy.momentsintime.usbserial;
+package dev.andrea.perroquet.usbserial;
 
 import com.hoho.android.usbserial.driver.CdcAcmSerialDriver;
 import com.hoho.android.usbserial.driver.Ch34xSerialDriver;

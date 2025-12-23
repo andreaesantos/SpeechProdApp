@@ -1,4 +1,4 @@
-package dev.lucy.momentsintime.usbserial
+package dev.andrea.perroquet.usbserial
 
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
@@ -27,7 +27,7 @@ class SerialPortHelper(private val context: Context) {
 
     companion object {
         private const val TAG = "SerialPortHelper"
-        private const val ACTION_USB_PERMISSION = "dev.lucy.momentsintime.USB_PERMISSION"
+        private const val ACTION_USB_PERMISSION = "dev.andrea.perroquet.USB_PERMISSION"
         private const val BAUD_RATE = 9600
         
         // Trigger codes for different event types
@@ -327,20 +327,20 @@ class SerialPortHelper(private val context: Context) {
      * @param eventType The event type from EventType enum
      * @return true if the code was sent successfully
      */
-    fun sendEventTrigger(eventType: dev.lucy.momentsintime.logging.EventType): Boolean {
+    fun sendEventTrigger(eventType: dev.andrea.perroquet.logging.EventType): Boolean {
         val triggerCode = when (eventType) {
-            dev.lucy.momentsintime.logging.EventType.EXPERIMENT_START -> TriggerCode.EXPERIMENT_START
-            dev.lucy.momentsintime.logging.EventType.EXPERIMENT_END -> TriggerCode.EXPERIMENT_END
-            dev.lucy.momentsintime.logging.EventType.BLOCK_START -> TriggerCode.BLOCK_START
-            dev.lucy.momentsintime.logging.EventType.BLOCK_END -> TriggerCode.BLOCK_END
-            dev.lucy.momentsintime.logging.EventType.TRIAL_START -> TriggerCode.TRIAL_START
-            dev.lucy.momentsintime.logging.EventType.TRIAL_END -> TriggerCode.TRIAL_END
-            dev.lucy.momentsintime.logging.EventType.VIDEO_START -> TriggerCode.VIDEO_START
-            dev.lucy.momentsintime.logging.EventType.VIDEO_END -> TriggerCode.VIDEO_END
-            dev.lucy.momentsintime.logging.EventType.FIXATION_START -> TriggerCode.FIXATION_START
-            dev.lucy.momentsintime.logging.EventType.FIXATION_END -> TriggerCode.FIXATION_END
-            dev.lucy.momentsintime.logging.EventType.RECORDING_START -> TriggerCode.RECORDING_START
-            dev.lucy.momentsintime.logging.EventType.RECORDING_END -> TriggerCode.RECORDING_END
+            dev.andrea.perroquet.logging.EventType.EXPERIMENT_START -> TriggerCode.EXPERIMENT_START
+            dev.andrea.perroquet.logging.EventType.EXPERIMENT_END -> TriggerCode.EXPERIMENT_END
+            dev.andrea.perroquet.logging.EventType.BLOCK_START -> TriggerCode.BLOCK_START
+            dev.andrea.perroquet.logging.EventType.BLOCK_END -> TriggerCode.BLOCK_END
+            dev.andrea.perroquet.logging.EventType.TRIAL_START -> TriggerCode.TRIAL_START
+            dev.andrea.perroquet.logging.EventType.TRIAL_END -> TriggerCode.TRIAL_END
+            dev.andrea.perroquet.logging.EventType.VIDEO_START -> TriggerCode.VIDEO_START
+            dev.andrea.perroquet.logging.EventType.VIDEO_END -> TriggerCode.VIDEO_END
+            dev.andrea.perroquet.logging.EventType.FIXATION_START -> TriggerCode.FIXATION_START
+            dev.andrea.perroquet.logging.EventType.FIXATION_END -> TriggerCode.FIXATION_END
+            dev.andrea.perroquet.logging.EventType.RECORDING_START -> TriggerCode.RECORDING_START
+            dev.andrea.perroquet.logging.EventType.RECORDING_END -> TriggerCode.RECORDING_END
             else -> return false // No trigger for other event types
         }
 

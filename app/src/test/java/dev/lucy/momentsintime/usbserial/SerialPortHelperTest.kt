@@ -1,4 +1,4 @@
-package dev.lucy.momentsintime.usbserial
+package dev.andrea.perroquet.usbserial
 
 import android.content.Context
 import android.hardware.usb.UsbDevice
@@ -10,7 +10,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.hoho.android.usbserial.driver.UsbSerialDriver
 import com.hoho.android.usbserial.driver.UsbSerialPort
 import com.hoho.android.usbserial.driver.UsbSerialProber
-import dev.lucy.momentsintime.logging.EventType
+import dev.andrea.perroquet.logging.EventType
 import io.mockk.*
 import io.mockk.impl.annotations.MockK
 import kotlinx.coroutines.ExperimentalCoroutinesApi

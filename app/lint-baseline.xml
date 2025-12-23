@@ -7,7 +7,7 @@
         errorLine1="        timeTextView.text = String.format(&quot;Time: %02d:%02d.%03d&quot;, "
         errorLine2="                            ^">
         <location
-            file="src/main/java/dev/lucy/momentsintime/ExperimentActivity.kt"
+            file="src/main/java/dev/andrea/perroquet/ExperimentActivity.kt"
             line="228"
             column="29"/>
     </issue>
@@ -18,7 +18,7 @@
         errorLine1="        timeTextView.text = String.format(&quot;Time: %02d:%02d.%03d&quot;, "
         errorLine2="                            ^">
         <location
-            file="src/main/java/dev/lucy/momentsintime/ExperimentActivity.kt"
+            file="src/main/java/dev/andrea/perroquet/ExperimentActivity.kt"
             line="228"
             column="29"/>
     </issue>
@@ -304,7 +304,7 @@
         errorLine1="            val resourceId = resources.getIdentifier("
         errorLine2="                                       ~~~~~~~~~~~~~">
         <location
-            file="src/main/java/dev/lucy/momentsintime/BaseExperimentActivity.kt"
+            file="src/main/java/dev/andrea/perroquet/BaseExperimentActivity.kt"
             line="178"
             column="40"/>
     </issue>
@@ -582,7 +582,7 @@
         errorLine1="                nextButton.text = &quot;Done&quot;"
         errorLine2="                                   ~~~~">
         <location
-            file="src/main/java/dev/lucy/momentsintime/ExperimentActivity.kt"
+            file="src/main/java/dev/andrea/perroquet/ExperimentActivity.kt"
             line="139"
             column="36"/>
     </issue>
@@ -593,7 +593,7 @@
         errorLine1="        statusTextView.text = &quot;Status: ${state.name}&quot;"
         errorLine2="                              ~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/java/dev/lucy/momentsintime/ExperimentActivity.kt"
+            file="src/main/java/dev/andrea/perroquet/ExperimentActivity.kt"
             line="166"
             column="31"/>
     </issue>
@@ -604,7 +604,7 @@
         errorLine1="        statusTextView.text = &quot;Status: ${state.name}&quot;"
         errorLine2="                               ~~~~~~~~">
         <location
-            file="src/main/java/dev/lucy/momentsintime/ExperimentActivity.kt"
+            file="src/main/java/dev/andrea/perroquet/ExperimentActivity.kt"
             line="166"
             column="32"/>
     </issue>
@@ -615,7 +615,7 @@
         errorLine1="        blockTextView.text = &quot;Block: $currentBlock / $totalBlocks&quot;"
         errorLine2="                             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/java/dev/lucy/momentsintime/ExperimentActivity.kt"
+            file="src/main/java/dev/andrea/perroquet/ExperimentActivity.kt"
             line="169"
             column="30"/>
     </issue>
@@ -626,7 +626,7 @@
         errorLine1="        blockTextView.text = &quot;Block: $currentBlock / $totalBlocks&quot;"
         errorLine2="                              ~~~~~~~">
         <location
-            file="src/main/java/dev/lucy/momentsintime/ExperimentActivity.kt"
+            file="src/main/java/dev/andrea/perroquet/ExperimentActivity.kt"
             line="169"
             column="31"/>
     </issue>
@@ -637,7 +637,7 @@
         errorLine1="        trialTextView.text = &quot;Trial: $currentTrial / $trialsPerBlock&quot;"
         errorLine2="                             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/java/dev/lucy/momentsintime/ExperimentActivity.kt"
+            file="src/main/java/dev/andrea/perroquet/ExperimentActivity.kt"
             line="170"
             column="30"/>
     </issue>
@@ -648,7 +648,7 @@
         errorLine1="        trialTextView.text = &quot;Trial: $currentTrial / $trialsPerBlock&quot;"
         errorLine2="                              ~~~~~~~">
         <location
-            file="src/main/java/dev/lucy/momentsintime/ExperimentActivity.kt"
+            file="src/main/java/dev/andrea/perroquet/ExperimentActivity.kt"
             line="170"
             column="31"/>
     </issue>
@@ -659,7 +659,7 @@
         errorLine1="                nextButton.text = &quot;Start&quot;"
         errorLine2="                                   ~~~~~">
         <location
-            file="src/main/java/dev/lucy/momentsintime/ExperimentActivity.kt"
+            file="src/main/java/dev/andrea/perroquet/ExperimentActivity.kt"
             line="198"
             column="36"/>
     </issue>
@@ -670,7 +670,7 @@
         errorLine1="                nextButton.text = &quot;Next Block&quot;"
         errorLine2="                                   ~~~~~~~~~~">
         <location
-            file="src/main/java/dev/lucy/momentsintime/ExperimentActivity.kt"
+            file="src/main/java/dev/andrea/perroquet/ExperimentActivity.kt"
             line="203"
             column="36"/>
     </issue>
@@ -681,7 +681,7 @@
         errorLine1="                nextButton.text = &quot;Finish&quot;"
         errorLine2="                                   ~~~~~~">
         <location
-            file="src/main/java/dev/lucy/momentsintime/ExperimentActivity.kt"
+            file="src/main/java/dev/andrea/perroquet/ExperimentActivity.kt"
             line="208"
             column="36"/>
     </issue>
@@ -692,7 +692,7 @@
         errorLine1="                nextButton.text = &quot;Next&quot;"
         errorLine2="                                   ~~~~">
         <location
-            file="src/main/java/dev/lucy/momentsintime/ExperimentActivity.kt"
+            file="src/main/java/dev/andrea/perroquet/ExperimentActivity.kt"
             line="213"
             column="36"/>
     </issue>

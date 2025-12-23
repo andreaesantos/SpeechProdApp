@@ -14,7 +14,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
-        <dev.lucy.momentsintime.CircularCountdownView
+        <dev.andrea.perroquet.CircularCountdownView
             android:id="@+id/circularCountdownView"
             android:layout_width="150dp"
             android:layout_height="150dp"

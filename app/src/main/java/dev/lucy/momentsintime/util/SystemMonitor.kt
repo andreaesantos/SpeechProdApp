@@ -1,4 +1,4 @@
-package dev.lucy.momentsintime.util
+package dev.andrea.perroquet.util
 
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -6,8 +6,8 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.BatteryManager
 import android.util.Log
-import dev.lucy.momentsintime.logging.EventLogger
-import dev.lucy.momentsintime.logging.EventType
+import dev.andrea.perroquet.logging.EventLogger
+import dev.andrea.perroquet.logging.EventType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
