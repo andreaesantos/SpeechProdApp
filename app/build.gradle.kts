@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "dev.lucy.momentsintime"
+    namespace = "dev.andrea.perroquet"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "dev.lucy.momentsintime"
+        applicationId = "dev.andrea.perroquet"
         minSdk = 24
         targetSdk = 35
         versionCode = 2
