@@ -1,4 +1,4 @@
 <resources>
-    <string name="app_name">SpeechProdApp</string>
+    <string name="app_name">Perroquet</string>
     <string name="instruction_demo_description">Instruction demo showing the experiment interface</string>
 </resources>
