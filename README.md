@@ -1,4 +1,6 @@
-# Moments in Time Experiment App
+# Speech Production Experiment App
+
+Forked and adapted from: https://github.com/lucyzmf/MomentsInTime
 
 An Android application for conducting cognitive neuroscience experiments that involve video stimuli and speech recording.
 
