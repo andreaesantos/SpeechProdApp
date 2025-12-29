@@ -2,8 +2,6 @@ package dev.andrea.perroquet
 
 import android.Manifest
 import android.app.AlertDialog
-import android.content.BroadcastReceiver
-import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
@@ -24,20 +22,19 @@ import androidx.core.view.WindowCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.ui.PlayerView
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.collect
 import android.util.Log
 import android.widget.ImageView
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.io.File
 import java.time.LocalDate
 import dev.andrea.perroquet.logging.EventLogger
 import dev.andrea.perroquet.logging.EventType
 import dev.andrea.perroquet.usbserial.SerialPortHelper
 import dev.andrea.perroquet.util.SessionVideoLoader
+import dev.andrea.perroquet.util.VideoProgressStore
 
 class ExperimentActivity : BaseExperimentActivity() {
-    
+
     private lateinit var statusTextView: TextView
     private lateinit var blockTextView: TextView
     private lateinit var trialTextView: TextView
@@ -59,7 +56,11 @@ class ExperimentActivity : BaseExperimentActivity() {
     private var dateString: String = ""
     var config: ExperimentConfig.Standard? = null
     var videoQueue: List<String> = emptyList()
-    private val videoLoader = SessionVideoLoader(this)
+    private val videoLoader by lazy { SessionVideoLoader(this) }
+    private val progressStore by lazy { VideoProgressStore(this) }
+
+    // offset into the full ordered list (for resume)
+    private var resumeStartIndex: Int = 0
 
     private val handler = Handler(Looper.getMainLooper())
     private val updateTimeRunnable = object : Runnable {
@@ -68,70 +69,84 @@ class ExperimentActivity : BaseExperimentActivity() {
             handler.postDelayed(this, 100) // Update every 100ms
         }
     }
-    
+
     // Audio recording
     private lateinit var audioRecorder: AudioRecorder
     private var currentRecordingFile: File? = null
     private var permissionsGranted = false
-    
+
     // Event logger and serial port helper
     private lateinit var eventLogger: EventLogger
     lateinit var serialPortHelper: SerialPortHelper
-    
+
     // Permission request launcher
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
         val allGranted = permissions.entries.all { it.value }
         permissionsGranted = allGranted
-        
+
         if (allGranted) {
             Toast.makeText(this, "Audio recording permission granted", Toast.LENGTH_SHORT).show()
         } else {
             Toast.makeText(this, "Audio recording permission denied", Toast.LENGTH_LONG).show()
         }
     }
-    
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_experiment)
-        
+
         // Hide the status bar and make the app full screen
         hideSystemUI()
-        
+
         // Get intent data
         participantId = intent.getIntExtra("PARTICIPANT_ID", -1)
         dateString = intent.getStringExtra("DATE") ?: LocalDate.now().toString()
-        
+
         // Create experiment config
         config = ExperimentConfig.Standard(
             participantId = participantId,
             date = LocalDate.parse(dateString),
             sessionNumber = intent.getIntExtra("SESSION_NUMBER", 1)
         )
-        
-        // Load videos for current session from CSV
-        videoQueue = videoLoader.loadVideosForSession(config?.sessionNumber ?: 1, config?.trialsPerBlock ?: 10)
-        
-        // Validate we got enough videos
-        val requiredVideos = (config?.blocks ?: 2) * (config?.trialsPerBlock ?: 1)
-        if (videoQueue.size < requiredVideos) {
-            Log.e(TAG, "Not enough videos for session ${config?.sessionNumber}. Got ${videoQueue.size}, need $requiredVideos")
-            throw IllegalStateException("Not enough videos for session")
+
+        // Load ALL videos in fixed order (1..65)
+        videoQueue = videoLoader.loadVideosInOrder()
+
+        if (videoQueue.size < 65) {
+            Log.e(TAG, "Not enough videos. Got ${videoQueue.size}, need 65")
+            throw IllegalStateException("Not enough videos")
         }
-        
+
+        // Read progress and compute where to resume (next trial)
+        val lastCompleted = progressStore.getLastCompletedIndex(participantId) // -1 if none
+        resumeStartIndex = (lastCompleted + 1).coerceAtLeast(0)
+
+        if (resumeStartIndex >= videoQueue.size) {
+            Log.d(TAG, "Participant already completed all videos. lastCompleted=$lastCompleted")
+            // You can decide what to do: finish, show message, etc.
+            // For now, start from beginning (or end the experiment)
+            resumeStartIndex = 0
+        }
+
+        // Debug
+        Log.d(TAG, "Resume: lastCompleted=$lastCompleted -> startIndex=$resumeStartIndex")
+        Log.d(TAG, "Prepared ordered video queue (${videoQueue.size}): ${videoQueue.joinToString()}")
+
+
         // Log prepared video queue
         Log.d(TAG, "Prepared video queue with ${videoQueue.size} videos: ${videoQueue.joinToString()}")
-        
+
         // Log prepared video queue
         Log.d("ExperimentActivity", "Prepared video queue with ${videoQueue.size} videos: ${videoQueue.joinToString()}")
-        
+
         // Initialize audio recorder
         audioRecorder = AudioRecorder(this)
-        
+
         // Check and request permissions
         checkAndRequestPermissions()
-        
+
         // Initialize views
         statusTextView = findViewById(R.id.statusTextView)
         blockTextView = findViewById(R.id.blockTextView)
@@ -143,7 +158,7 @@ class ExperimentActivity : BaseExperimentActivity() {
         experimentContentTextView = findViewById(R.id.experimentContentTextView)
         recordingContainer = findViewById(R.id.recordingContainer)
         microphoneImageView = findViewById(R.id.microphoneImageView)
-        
+
         // Initialize fixation cross views
         fixationCrossLayout = findViewById(R.id.fixationCrossLayout)
         fixationCrossTextView = fixationCrossLayout.findViewById(R.id.fixationCrossTextView)
@@ -160,7 +175,7 @@ class ExperimentActivity : BaseExperimentActivity() {
         playerView.player = player
         playerView.useController = false  // Disable the control panel
         playerView.controllerAutoShow = false  // Prevent controls from showing automatically
-        
+
         // Initialize experiment
         initializeExperiment(config?.blocks ?: 3, config?.trialsPerBlock ?: 5)
         startButton.visibility = View.GONE
@@ -168,24 +183,24 @@ class ExperimentActivity : BaseExperimentActivity() {
         // Initialize event logger
         eventLogger = EventLogger.initialize(this, this.experimentStartTime)
         eventLogger.setExperimentInfo(
-            participantId, 
+            participantId,
             config?.sessionNumber ?: 1,  // Default to session 1 if config is null
             dateString
         )
-        
+
         // Initialize serial port helper
         serialPortHelper = SerialPortHelper(this)
-        
+
         // Make sure connection status is visible
         connectionStatusTextView.visibility = View.VISIBLE
-        
+
         // Observe connection state
         lifecycleScope.launch {
             serialPortHelper.connectionState.collect { state ->
                 updateConnectionStatus(state)
             }
         }
-        
+
         // Try to connect to a USB device
         lifecycleScope.launch(Dispatchers.IO) {
             val connected = serialPortHelper.connectToFirstAvailable()
@@ -197,10 +212,10 @@ class ExperimentActivity : BaseExperimentActivity() {
         nextButton.setOnClickListener {
             handleNextButtonClick()
         }
-        
+
         // Start time updates
         handler.post(updateTimeRunnable)
-        
+
         // Observe state changes
         lifecycleScope.launch {
             experimentState.collect { state ->
@@ -208,14 +223,14 @@ class ExperimentActivity : BaseExperimentActivity() {
             }
         }
     }
-    
+
     override fun onDestroy() {
         handler.removeCallbacks(updateTimeRunnable)
         audioRecorder.stopRecording()
         serialPortHelper.cleanup()
         super.onDestroy()
     }
-    
+
     /**
      * Hides the system UI (status bar and navigation bar)
      */
@@ -224,7 +239,7 @@ class ExperimentActivity : BaseExperimentActivity() {
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
                 // For API 30 and above
                 WindowCompat.setDecorFitsSystemWindows(window, false)
-                
+
                 // Use post to ensure window is fully initialized
                 window.decorView.post {
                     window.insetsController?.let {
@@ -244,10 +259,10 @@ class ExperimentActivity : BaseExperimentActivity() {
                     or View.SYSTEM_UI_FLAG_FULLSCREEN
                 )
             }
-            
+
             // Keep screen on during experiment
             window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-            
+
             // Make sure connection status is still visible after hiding system UI
             handler.postDelayed({
                 connectionStatusTextView.visibility = View.VISIBLE
@@ -257,7 +272,7 @@ class ExperimentActivity : BaseExperimentActivity() {
             Log.e("ExperimentActivity", "Error hiding system UI: ${e.message}", e)
         }
     }
-    
+
     /**
      * Check and request necessary permissions
      */
@@ -266,18 +281,18 @@ class ExperimentActivity : BaseExperimentActivity() {
             Manifest.permission.RECORD_AUDIO,
             Manifest.permission.WRITE_EXTERNAL_STORAGE
         )
-        
+
         // Check each permission individually and log the result
         permissions.forEach { permission ->
-            val isGranted = ContextCompat.checkSelfPermission(this, permission) == 
+            val isGranted = ContextCompat.checkSelfPermission(this, permission) ==
                 PackageManager.PERMISSION_GRANTED
             Log.d("PermissionCheck", "$permission granted: $isGranted")
         }
-        
+
         val permissionsToRequest = permissions.filter {
             ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
         }.toTypedArray()
-        
+
         if (permissionsToRequest.isNotEmpty()) {
             Log.d("PermissionCheck", "Requesting permissions: ${permissionsToRequest.joinToString()}")
             requestPermissionLauncher.launch(permissionsToRequest)
@@ -286,11 +301,11 @@ class ExperimentActivity : BaseExperimentActivity() {
             permissionsGranted = true
         }
     }
-    
+
     override fun onStateChanged(state: ExperimentState) {
         // Log state change with additional details
 //        eventLogger.logStateChange(state.name,)
-        
+
         // Check if we need to show battery warning (only at experiment start)
         if (state == ExperimentState.IDLE && isBatteryLow) {
             showBatteryWarning()
@@ -305,7 +320,7 @@ class ExperimentActivity : BaseExperimentActivity() {
                     ExperimentState.EXPERIMENT_END -> EventType.EXPERIMENT_END
                     else -> null
                 }
-                
+
                 eventType?.let {
                     // Only attempt to send if connected
                     if (serialPortHelper.connectionState.value == SerialPortHelper.ConnectionState.CONNECTED) {
@@ -326,28 +341,28 @@ class ExperimentActivity : BaseExperimentActivity() {
                 eventLogger.logError("Error sending trigger: ${e.message}")
             }
         }
-        
+
         // No battery status updates on state change
-        
+
         when (state) {
             ExperimentState.BLOCK_START -> {
                 // Log block start
                 eventLogger.logBlockEvent(EventType.BLOCK_START, currentBlock)
-                
+
                 // Automatically transition to first trial after a short delay
                 handler.postDelayed({
                     startNextTrial()
                 }, 500)
             }
-            
+
             ExperimentState.TRIAL_VIDEO -> {
                 // Log trial start
 //                eventLogger.logTrialEvent(EventType.TRIAL_START, currentBlock, currentTrial)
-                
+
                 // Play video
                 playCurrentTrialVideo()
             }
-            
+
             ExperimentState.FIXATION_DELAY -> {
                 // Log fixation start
                 eventLogger.logEvent(EventType.FIXATION_START)
@@ -368,56 +383,56 @@ class ExperimentActivity : BaseExperimentActivity() {
                     serialPortHelper.sendEventTrigger(EventType.FIXATION_END)
                 }
             }
-            
+
             ExperimentState.SPEECH_RECORDING -> {
                 // Start audio recording
                 startAudioRecording()
             }
-            
+
             ExperimentState.BLOCK_END -> {
                 // Log block end
                 eventLogger.logBlockEvent(EventType.BLOCK_END, currentBlock)
-                
+
                 // Show next button to proceed to next block
                 nextButton.isEnabled = true
             }
-            
+
             ExperimentState.EXPERIMENT_END -> {
                 // Log experiment end
                 eventLogger.logEvent(EventType.EXPERIMENT_END)
-                
+
                 // Save all events
                 eventLogger.saveEvents()
-                
+
                 // Experiment complete
                 nextButton.isEnabled = false
                 nextButton.text = "Done"
             }
-            
+
             else -> { /* No action needed */ }
         }
     }
-    
+
     private fun handleNextButtonClick() {
         when (experimentState.value) {
             ExperimentState.IDLE -> {
                 // Log experiment start
                 eventLogger.logEvent(EventType.EXPERIMENT_START)
-                
+
                 // Send experiment start trigger
                 lifecycleScope.launch(Dispatchers.IO) {
                     serialPortHelper.sendEventTrigger(EventType.EXPERIMENT_START)
                 }
-                
+
                 // Ensure system UI is hidden when experiment starts
                 hideSystemUI()
                 startNextBlock()
             }
-            
+
             ExperimentState.BLOCK_END -> {
                 startNextBlock()
             }
-            
+
             ExperimentState.EXPERIMENT_END -> {
                 // Close the app completely when experiment is done
                 finishAffinity()
@@ -426,11 +441,11 @@ class ExperimentActivity : BaseExperimentActivity() {
             ExperimentState.SPEECH_RECORDING -> {
                 audioRecorder.stopRecording()
             }
-            
+
             else -> { /* No action needed */ }
         }
     }
-    
+
     /**
      * Update the connection status display
      */
@@ -438,7 +453,7 @@ class ExperimentActivity : BaseExperimentActivity() {
         // Always use runOnUiThread for UI updates
         runOnUiThread {
             Log.d("ExperimentActivity", "Updating connection status to: $state")
-            
+
             val statusText = when (state) {
                 SerialPortHelper.ConnectionState.CONNECTED -> "USB: Connected ✓"
                 SerialPortHelper.ConnectionState.CONNECTING -> "USB: Connecting..."
@@ -450,10 +465,10 @@ class ExperimentActivity : BaseExperimentActivity() {
                 SerialPortHelper.ConnectionState.CONNECTION_FAILED -> "USB: Connection failed"
                 SerialPortHelper.ConnectionState.ERROR -> "USB: Error"
             }
-            
+
             val textColor = when (state) {
                 SerialPortHelper.ConnectionState.CONNECTED -> getColor(android.R.color.holo_green_dark)
-                SerialPortHelper.ConnectionState.CONNECTING, 
+                SerialPortHelper.ConnectionState.CONNECTING,
                 SerialPortHelper.ConnectionState.PERMISSION_PENDING -> getColor(android.R.color.holo_blue_dark)
                 else -> getColor(android.R.color.holo_red_dark)
             }
@@ -467,10 +482,10 @@ class ExperimentActivity : BaseExperimentActivity() {
                 text = statusText
                 setTextColor(textColor)
                 visibility = text_visibility
-                
+
                 // Ensure it's on top of other views
                 bringToFront()
-                
+
                 // Add a brief animation to draw attention
                 alpha = 0.7f
                 animate().alpha(1.0f).setDuration(300).start()
@@ -482,11 +497,11 @@ class ExperimentActivity : BaseExperimentActivity() {
     private fun updateUI(state: ExperimentState) {
         // Update status text
         statusTextView.text = "Status: ${state.name}"
-        
+
         // Update block and trial counters
         blockTextView.text = "Block: $currentBlock / $totalBlocks"
         trialTextView.text = "Trial: $currentTrial / $trialsPerBlock"
-        
+
         // Update experiment content visibility
         when (state) {
             ExperimentState.TRIAL_VIDEO -> {
@@ -508,7 +523,7 @@ class ExperimentActivity : BaseExperimentActivity() {
             else -> {
                 playerView.visibility = View.GONE
                 fixationCrossLayout.visibility = View.GONE
-                
+
                 // Handle special case for speech recording
                 if (state == ExperimentState.SPEECH_RECORDING) {
                     experimentContentTextView.visibility = View.GONE
@@ -517,7 +532,7 @@ class ExperimentActivity : BaseExperimentActivity() {
                 } else {
                     experimentContentTextView.visibility = View.VISIBLE
                     recordingContainer.visibility = View.GONE
-                    
+
                     // Update content text based on state
                     experimentContentTextView.text = when (state) {
                         ExperimentState.BLOCK_START -> "Début du bloc $currentBlock"
@@ -528,7 +543,7 @@ class ExperimentActivity : BaseExperimentActivity() {
                 }
             }
         }
-        
+
         // Update button visibility and state
         when (state) {
             ExperimentState.IDLE -> {
@@ -561,14 +576,14 @@ class ExperimentActivity : BaseExperimentActivity() {
             }
         }
     }
-    
+
     override fun onVideoError(errorMessage: String) {
         super.onVideoError(errorMessage)
         // Log error
         eventLogger.logError("Video error: $errorMessage")
         Toast.makeText(this, errorMessage, Toast.LENGTH_SHORT).show()
     }
-    
+
     /**
      * Show error dialog with recovery options
      */
@@ -583,12 +598,12 @@ class ExperimentActivity : BaseExperimentActivity() {
                         // Reset error count and continue
                         errorCount = 0
                         recoveryAttempted = true
-                        
+
                         // Log recovery attempt
                         eventLogger.logEvent(
                             EventType.SYSTEM_RECOVERY,
                         )
-                        
+
                         // Continue with next trial
                         if (currentTrial < trialsPerBlock) {
                             startNextTrial()
@@ -601,15 +616,15 @@ class ExperimentActivity : BaseExperimentActivity() {
                         eventLogger.logEvent(
                             EventType.EXPERIMENT_ABORTED,
                         )
-                        
+
                         // Save logs before ending
                         eventLogger.saveEvents()
-                        
+
                         // End experiment
                         transitionToState(ExperimentState.EXPERIMENT_END)
                     }
                     .create()
-                
+
                 dialog.show()
             } catch (e: Exception) {
                 Log.e("ExperimentActivity", "Failed to show error dialog: ${e.message}", e)
@@ -618,16 +633,16 @@ class ExperimentActivity : BaseExperimentActivity() {
             }
         }
     }
-    
+
     private fun updateTimeDisplay() {
         val elapsedMs = getElapsedExperimentTime()
         val seconds = (elapsedMs / 1000) % 60
         val minutes = (elapsedMs / (1000 * 60)) % 60
-        
-        timeTextView.text = String.format("Time: %02d:%02d.%03d", 
+
+        timeTextView.text = String.format("Time: %02d:%02d.%03d",
             minutes, seconds, elapsedMs % 1000)
     }
-    
+
     /**
      * Show battery warning if battery is low at experiment start
      */
@@ -635,27 +650,27 @@ class ExperimentActivity : BaseExperimentActivity() {
         if (isBatteryLow) {
             val batteryIntent = registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
             val status = batteryIntent?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
-            val isCharging = status == BatteryManager.BATTERY_STATUS_CHARGING || 
+            val isCharging = status == BatteryManager.BATTERY_STATUS_CHARGING ||
                              status == BatteryManager.BATTERY_STATUS_FULL
-            
+
             val chargingSymbol = if (isCharging) "⚡" else ""
-            
+
             runOnUiThread {
                 batteryStatusTextView.text = String.format("WARNING: Low Battery: %d%% %s", batteryLevel, chargingSymbol)
                 batteryStatusTextView.setTextColor(getColor(android.R.color.holo_red_light))
                 batteryStatusTextView.visibility = View.VISIBLE
-                
+
                 // Auto-hide after 10 seconds
                 batteryStatusTextView.postDelayed({
                     batteryStatusTextView.visibility = View.GONE
                 }, 10000)
             }
-            
+
             // Log battery warning
             eventLogger.logEvent(EventType.BATTERY_WARNING)
         }
     }
-    
+
     /**
      * Start the fixation cross countdown timer
      * @param durationMs Total duration of the fixation period in milliseconds
@@ -664,19 +679,19 @@ class ExperimentActivity : BaseExperimentActivity() {
         val updateIntervalMs = 16L // Update at ~60fps for smooth animation
         val totalSteps = durationMs / updateIntervalMs
         var remainingSteps = totalSteps
-        
+
         // Initial display
         updateCountdownDisplay(durationMs, durationMs)
-        
+
         // Create a repeating task to update the countdown
         val countdownRunnable = object : Runnable {
             override fun run() {
                 remainingSteps--
                 val remainingMs = remainingSteps * updateIntervalMs
-                
+
                 // Update the display
                 updateCountdownDisplay(remainingMs, durationMs)
-                
+
                 if (remainingSteps > 0) {
                     // Schedule the next update
                     handler.postDelayed(this, updateIntervalMs)
@@ -686,11 +701,11 @@ class ExperimentActivity : BaseExperimentActivity() {
                 }
             }
         }
-        
+
         // Start the countdown
         handler.postDelayed(countdownRunnable, updateIntervalMs)
     }
-    
+
     /**
      * Update the countdown display
      * @param remainingMs Remaining time in milliseconds
@@ -699,21 +714,21 @@ class ExperimentActivity : BaseExperimentActivity() {
     private fun updateCountdownDisplay(remainingMs: Long, totalMs: Long) {
         // Calculate progress (0.0 to 1.0)
         val progress = remainingMs.toFloat() / totalMs
-        
+
         // Update the circular countdown view with progress only (no text)
         circularCountdownView.progress = progress
     }
-    
+
     /**
      * Start audio recording for the current trial
      */
     private fun startAudioRecording() {
         Log.d("ExperimentActivity", "Starting audio recording, permissions granted: $permissionsGranted")
-        
+
         // Double-check permissions at runtime
         val micPermission = ContextCompat.checkSelfPermission(
             this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
-        
+
         if (!micPermission) {
             Log.e("ExperimentActivity", "Microphone permission is not granted at runtime check")
             Toast.makeText(
@@ -721,27 +736,27 @@ class ExperimentActivity : BaseExperimentActivity() {
                 "Cannot record audio: microphone permission not granted",
                 Toast.LENGTH_LONG
             ).show()
-            
+
             // Log permission error
             eventLogger.logError("Microphone permission denied during recording")
-            
+
             // Request permission again if needed
             requestPermissionLauncher.launch(arrayOf(Manifest.permission.RECORD_AUDIO))
-            
+
             // Skip recording and move to next state
             handleRecordingComplete()
             return
         }
-        
+
         // Update UI to show recording state
         experimentContentTextView.visibility = View.GONE
         recordingContainer.visibility = View.VISIBLE
-        
+
         // send trigger code
         lifecycleScope.launch(Dispatchers.IO) {
             serialPortHelper.sendEventTrigger(EventType.RECORDING_START)
         }
-        
+
         // Start recording
         audioRecorder.startRecording(
             participantId = participantId,
@@ -750,12 +765,12 @@ class ExperimentActivity : BaseExperimentActivity() {
             onComplete = { file ->
                 currentRecordingFile = file
                 Log.d("ExperimentActivity", "Recording completed successfully: ${file.absolutePath}")
-                
+
                 // Log recording end
                 eventLogger.logRecordingEvent(
-                    EventType.RECORDING_END, 
-                    currentBlock, 
-                    currentTrial, 
+                    EventType.RECORDING_END,
+                    currentBlock,
+                    currentTrial,
                     file.name
                 )
 
@@ -763,7 +778,7 @@ class ExperimentActivity : BaseExperimentActivity() {
                 lifecycleScope.launch(Dispatchers.IO) {
                     serialPortHelper.sendEventTrigger(EventType.RECORDING_END)
                 }
-                
+
                 runOnUiThread {
 //                    Toast.makeText(
 //                        this,
@@ -775,10 +790,10 @@ class ExperimentActivity : BaseExperimentActivity() {
             },
             onError = { error ->
                 Log.e("ExperimentActivity", "Recording error: $error")
-                
+
                 // Log error
                 eventLogger.logError("Recording error: $error")
-                
+
                 runOnUiThread {
                     Toast.makeText(
                         this,
@@ -790,13 +805,19 @@ class ExperimentActivity : BaseExperimentActivity() {
             }
         )
     }
-    
+
     /**
      * Handle completion of recording
      */
     private fun handleRecordingComplete() {
         stopMicAnimation()
+
+        val globalIndex = (currentBlock - 1) * trialsPerBlock + (currentTrial - 1)
+        val absoluteIndex = resumeStartIndex + globalIndex
+        progressStore.setLastCompletedIndex(participantId, absoluteIndex)
+        Log.d(TAG, "Saved progress: participant=$participantId absoluteIndex=$absoluteIndex (block=$currentBlock trial=$currentTrial)")
         // Add 1 second delay before next trial/block
+
         handler.postDelayed({
             if (currentTrial < trialsPerBlock) {
                 startNextTrial()

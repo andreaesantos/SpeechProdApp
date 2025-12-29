@@ -3,6 +3,7 @@ package dev.andrea.perroquet
 import android.content.Intent
 import android.os.Bundle
 import android.widget.ImageView
+import android.widget.Button
 import androidx.appcompat.app.AppCompatActivity
 import java.time.LocalDate
 
@@ -21,11 +22,14 @@ class InstructionActivity : AppCompatActivity() {
         dateString = intent.getStringExtra("DATE") ?: LocalDate.now().toString()
 
         val icon = findViewById<ImageView>(R.id.instructionIcon)
+        val nextButton = findViewById<Button>(R.id.nextButton)
 
         // Tap the icon to start
         icon.setOnClickListener {
             navigateToExperiment()
         }
+
+        nextButton.setOnClickListener {navigateToExperiment()}
     }
 
     private fun navigateToExperiment() {
