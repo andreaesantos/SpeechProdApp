@@ -15,3 +15,8 @@ app/src/main/res/raw
 .cxx
 local.properties
 .aider*
+
+.idea/
+*.iml
+local.properties
+
