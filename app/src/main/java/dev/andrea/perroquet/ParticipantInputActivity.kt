@@ -50,8 +50,10 @@ class ParticipantInputActivity : ComponentActivity() {
 @Composable
 fun ParticipantInputScreen(onStartExperiment: (Int, Int) -> Unit) {
     var participantIdText by remember { mutableStateOf("") }
-    var sessionNumber by remember { mutableStateOf(1) }
-    var isError by remember { mutableStateOf(false) }
+    var sessionNumberText by remember { mutableStateOf("1") }
+
+    var participantError by remember { mutableStateOf(false) }
+    var sessionError by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -61,7 +63,7 @@ fun ParticipantInputScreen(onStartExperiment: (Int, Int) -> Unit) {
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = "Répetition de mots",
+            text = "Brain Recording Experiment",
             style = MaterialTheme.typography.headlineMedium,
             modifier = Modifier.padding(bottom = 32.dp)
         )
@@ -70,123 +72,53 @@ fun ParticipantInputScreen(onStartExperiment: (Int, Int) -> Unit) {
             value = participantIdText,
             onValueChange = {
                 participantIdText = it
-                isError = false
+                participantError = false
             },
             label = { Text("Participant ID") },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            isError = isError,
+            isError = participantError,
             supportingText = {
-                if (isError) {
-                    Text("Participant ID must be a positive number")
-                }
+                if (participantError) Text("Participant ID must be a positive number")
             },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 16.dp)
         )
 
-        // Session selection
-        Text(
-            text = "Session",
-            style = MaterialTheme.typography.bodyLarge,
+        OutlinedTextField(
+            value = sessionNumberText,
+            onValueChange = {
+                // keep digits only (optional, but nice to avoid junk input)
+                sessionNumberText = it.filter { ch -> ch.isDigit() }
+                sessionError = false
+            },
+            label = { Text("Session number") },
+            placeholder = { Text("e.g., 1") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            isError = sessionError,
+            supportingText = {
+                if (sessionError) Text("Session must be a positive number")
+            },
             modifier = Modifier
-                .align(Alignment.Start)
-                .padding(start = 4.dp, bottom = 8.dp)
+                .fillMaxWidth()
+                .padding(bottom = 24.dp)
         )
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Session 1 radio button
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .weight(1f)
-                    .clickable { sessionNumber = 1 }
-            ) {
-                RadioButton(
-                    selected = sessionNumber == 1,
-                    onClick = { sessionNumber = 1 }
-                )
-                Text(
-                    text = "Session 1",
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(start = 8.dp)
-                )
-            }
-
-            // Session 2 radio button
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .weight(1f)
-                    .clickable { sessionNumber = 2 }
-            ) {
-                RadioButton(
-                    selected = sessionNumber == 2,
-                    onClick = { sessionNumber = 2 }
-                )
-                Text(
-                    text = "Session 2",
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(start = 8.dp)
-                )
-            }
-        }
-        // another row of session
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ){
-            // Session 3 radio button
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .weight(1f)
-                    .clickable { sessionNumber = 3 }
-            ) {
-                RadioButton(
-                    selected = sessionNumber == 3,
-                    onClick = { sessionNumber = 3 }
-                )
-                Text(
-                    text = "Session 3",
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(start = 8.dp)
-                )
-            }
-
-            // Session 4 radio button
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .weight(1f)
-                    .clickable { sessionNumber = 4 }
-            ) {
-                RadioButton(
-                    selected = sessionNumber == 4,
-                    onClick = { sessionNumber = 4 }
-                )
-                Text(
-                    text = "Session 4",
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(start = 8.dp)
-                )
-            }
-        }
 
         Button(
             onClick = {
                 val participantId = participantIdText.toIntOrNull()
-                if (participantId != null && ExperimentConfig.isValidParticipantId(participantId)) {
-                    onStartExperiment(participantId, sessionNumber)
-                } else {
-                    isError = true
+                val sessionNumber = sessionNumberText.toIntOrNull()
+
+                val validParticipant =
+                    participantId != null && ExperimentConfig.isValidParticipantId(participantId)
+                val validSession =
+                    sessionNumber != null && sessionNumber > 0
+
+                participantError = !validParticipant
+                sessionError = !validSession
+
+                if (validParticipant && validSession) {
+                    onStartExperiment(participantId!!, sessionNumber!!)
                 }
             },
             modifier = Modifier
