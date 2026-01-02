@@ -333,6 +333,19 @@ abstract class BaseExperimentActivity : AppCompatActivity() {
     protected open fun playVideo(videoName: String) {
         try {
             currentVideoName = videoName
+            lifecycleScope.launch(Dispatchers.IO) {
+                try {
+                    val logger = dev.andrea.perroquet.logging.EventLogger.getInstance()
+                    val eventType = dev.andrea.perroquet.logging.EventType.VIDEO_START
+                    logger.logVideoEvent(eventType, currentBlock, currentTrial, currentVideoName ?: "unknown")
+
+                    val activity = this@BaseExperimentActivity as? ExperimentActivity
+                    activity?.serialPortHelper?.sendEventTrigger(eventType)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error logging video start: ${e.message}")
+                }
+            }
+
             videoStartTime = SystemClock.elapsedRealtime()
 
             // Keep your VIDEO_START logging/trigger code as-is (you already have it)
@@ -354,7 +367,10 @@ abstract class BaseExperimentActivity : AppCompatActivity() {
             }
 
             val uri = Uri.parse("asset:///$assetPath")
-            val mediaItem = MediaItem.fromUri(uri)
+            val mediaItem = MediaItem.Builder()
+                .setUri(uri)
+                .setMediaId(videoName.trim())
+                .build()
 
             val dataSourceFactory = DefaultDataSource.Factory(this)
             val mediaSource = ProgressiveMediaSource.Factory(dataSourceFactory)

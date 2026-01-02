@@ -629,12 +629,18 @@ class ExperimentActivity : BaseExperimentActivity() {
                 playerView.visibility = View.GONE
                 experimentContentTextView.visibility = View.GONE
                 fixationCrossLayout.visibility = View.VISIBLE
+                passButton.visibility = View.GONE
+                failButton.visibility = View.GONE
+
             }
             ExperimentState.IDLE -> {
                 playerView.visibility = View.GONE
                 experimentContentTextView.visibility = View.VISIBLE
                 fixationCrossLayout.visibility = View.GONE
                 experimentContentTextView.text = "Prêt(e) à commencer l’expérience"
+                passButton.visibility = View.GONE
+                failButton.visibility = View.GONE
+
             }
             else -> {
                 playerView.visibility = View.GONE
