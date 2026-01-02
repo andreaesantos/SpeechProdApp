@@ -125,7 +125,22 @@ class ExperimentActivity : BaseExperimentActivity() {
         val runDir = RunStore.getOrCreateRunDir(this, participantId, dateString, runId)
         val logDir = File(runDir, "logs").apply { mkdirs() }
 
+        val mode = intent.getStringExtra(ParticipantInputActivity.EXTRA_MODE) ?: ParticipantInputActivity.MODE_FULL
+        val allVideos = videoLoader.loadVideosInOrder()
 
+        videoQueue = if (mode == ParticipantInputActivity.MODE_PASSED_ONLY) {
+            val decisionStore = dev.andrea.perroquet.util.DecisionStore(this)
+            val passed = decisionStore.getPassedVideos(participantId)
+            allVideos.filter { it in passed }
+        } else {
+            allVideos
+        }
+
+        if (mode == ParticipantInputActivity.MODE_PASSED_ONLY && videoQueue.isEmpty()) {
+            Toast.makeText(this, "No passed videos yet", Toast.LENGTH_LONG).show()
+            finish()
+            return
+        }
         // Create experiment config
         config = ExperimentConfig.Standard(
             participantId = participantId,

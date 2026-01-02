@@ -6,20 +6,25 @@ import android.widget.ImageView
 import android.widget.Button
 import androidx.appcompat.app.AppCompatActivity
 import java.time.LocalDate
+import java.util.UUID
 
 class InstructionActivity : AppCompatActivity() {
 
     private var participantId: Int = -1
     private var sessionNumber: Int = 1
     private var dateString: String = ""
+    private var runId: String = ""
+    private var mode: String = ParticipantInputActivity.MODE_FULL
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_instruction)
 
-        participantId = intent.getIntExtra("PARTICIPANT_ID", -1)
-        sessionNumber = intent.getIntExtra("SESSION_NUMBER", 1)
-        dateString = intent.getStringExtra("DATE") ?: LocalDate.now().toString()
+        participantId = intent.getIntExtra(ParticipantInputActivity.EXTRA_PARTICIPANT_ID, -1)
+        dateString = intent.getStringExtra(ParticipantInputActivity.EXTRA_DATE) ?: LocalDate.now().toString()
+        runId = intent.getStringExtra(ParticipantInputActivity.EXTRA_RUN_ID) ?: UUID.randomUUID().toString()
+        mode = intent.getStringExtra(ParticipantInputActivity.EXTRA_MODE) ?: ParticipantInputActivity.MODE_FULL
+
 
         val icon = findViewById<ImageView>(R.id.instructionIcon)
         val nextButton = findViewById<Button>(R.id.nextButton)
@@ -34,9 +39,10 @@ class InstructionActivity : AppCompatActivity() {
 
     private fun navigateToExperiment() {
         val i = Intent(this, ExperimentActivity::class.java).apply {
-            putExtra("PARTICIPANT_ID", participantId)
-            putExtra("SESSION_NUMBER", sessionNumber)
-            putExtra("DATE", dateString)
+            putExtra(ParticipantInputActivity.EXTRA_PARTICIPANT_ID, participantId)
+            putExtra(ParticipantInputActivity.EXTRA_DATE, dateString)
+            putExtra(ParticipantInputActivity.EXTRA_RUN_ID, runId)
+            putExtra(ParticipantInputActivity.EXTRA_MODE, mode)
         }
         startActivity(i)
         finish()
