@@ -17,7 +17,6 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
-    // ✅ Add this
     flavorDimensions += "app"
     productFlavors {
         create("classic") {
