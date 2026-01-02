@@ -170,12 +170,37 @@
             android:visibility="gone"/>
 
         <Button
+            android:id="@+id/failButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:text="@string/pass"
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toStartOf="@+id/passButton"
+            app:layout_constraintHorizontal_weight="1"
+            android:layout_margin="8dp"/>
+
+        <Button
+            android:id="@+id/passButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:text="@string/fail"
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toEndOf="@+id/failButton"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_weight="1"
+            android:layout_margin="8dp"/>
+
+        <Button
             android:id="@+id/exitButton"
             android:layout_width="match_parent"
             android:layout_weight="1"
             android:layout_height="wrap_content"
             android:text="@string/sortir"
             android:visibility="gone"/>
+
 
     </LinearLayout>
 

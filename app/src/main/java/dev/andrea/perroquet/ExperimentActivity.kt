@@ -44,6 +44,9 @@ class ExperimentActivity : BaseExperimentActivity() {
     private lateinit var startButton: Button
     private lateinit var nextButton: Button
     private lateinit var reloadButton: Button
+    private lateinit var passButton: Button
+    private lateinit var failButton: Button
+    private lateinit var decisionStore: dev.andrea.perroquet.util.DecisionStore
 
     private lateinit var exitButton: Button
     private lateinit var playerView: PlayerView
@@ -107,6 +110,14 @@ class ExperimentActivity : BaseExperimentActivity() {
         setContentView(R.layout.activity_experiment)
         reloadButton = findViewById(R.id.reloadButton)
         reloadButton.visibility = View.GONE
+        passButton = findViewById(R.id.passButton)
+        failButton = findViewById(R.id.failButton)
+
+        decisionStore = dev.andrea.perroquet.util.DecisionStore(this) // uses datasetKey default
+        passButton.setOnClickListener { recordDecision("PASS") }
+        failButton.setOnClickListener { recordDecision("FAIL") }
+
+
         exitButton = findViewById(R.id.exitButton)
 
         exitButton.setOnClickListener {
@@ -117,9 +128,9 @@ class ExperimentActivity : BaseExperimentActivity() {
         hideSystemUI()
 
         // Get intent data
-        participantId = intent.getIntExtra("PARTICIPANT_ID", -1)
-        dateString = intent.getStringExtra("DATE") ?: LocalDate.now().toString()
-        runId = intent.getStringExtra("RUN_ID") ?: java.util.UUID.randomUUID().toString()
+        participantId = intent.getIntExtra(ParticipantInputActivity.EXTRA_PARTICIPANT_ID, -1)
+        dateString = intent.getStringExtra(ParticipantInputActivity.EXTRA_DATE) ?: LocalDate.now().toString()
+        runId = intent.getStringExtra(ParticipantInputActivity.EXTRA_RUN_ID) ?: java.util.UUID.randomUUID().toString()
 
 
         val runDir = RunStore.getOrCreateRunDir(this, participantId, dateString, runId)
@@ -127,14 +138,6 @@ class ExperimentActivity : BaseExperimentActivity() {
 
         val mode = intent.getStringExtra(ParticipantInputActivity.EXTRA_MODE) ?: ParticipantInputActivity.MODE_FULL
         val allVideos = videoLoader.loadVideosInOrder()
-
-        videoQueue = if (mode == ParticipantInputActivity.MODE_PASSED_ONLY) {
-            val decisionStore = dev.andrea.perroquet.util.DecisionStore(this)
-            val passed = decisionStore.getPassedVideos(participantId)
-            allVideos.filter { it in passed }
-        } else {
-            allVideos
-        }
 
         if (mode == ParticipantInputActivity.MODE_PASSED_ONLY && videoQueue.isEmpty()) {
             Toast.makeText(this, "No passed videos yet", Toast.LENGTH_LONG).show()
@@ -148,8 +151,13 @@ class ExperimentActivity : BaseExperimentActivity() {
             runId = runId
         )
 
-        // Load ALL videos in fixed order (1..65)
-        videoQueue = videoLoader.loadVideosInOrder()
+        videoQueue = if (mode == ParticipantInputActivity.MODE_PASSED_ONLY) {
+            val passed = decisionStore.getPassedVideos(participantId)
+            allVideos.filter { it in passed }
+        } else {
+            allVideos
+        }
+
         val blocks = config?.blocks ?: 3
         val trials = config?.trialsPerBlock ?: 5
         val needed = blocks * trials
@@ -612,6 +620,8 @@ class ExperimentActivity : BaseExperimentActivity() {
                 playerView.visibility = View.VISIBLE
                 experimentContentTextView.visibility = View.GONE
                 fixationCrossLayout.visibility = View.GONE
+                passButton.visibility = View.VISIBLE
+                failButton.visibility = View.VISIBLE
 
                 reloadButton.visibility = View.VISIBLE
             }
@@ -629,6 +639,8 @@ class ExperimentActivity : BaseExperimentActivity() {
             else -> {
                 playerView.visibility = View.GONE
                 fixationCrossLayout.visibility = View.GONE
+                passButton.visibility = View.GONE
+                failButton.visibility = View.GONE
 
                 // Handle special case for speech recording
                 if (state == ExperimentState.SPEECH_RECORDING) {
@@ -824,6 +836,23 @@ class ExperimentActivity : BaseExperimentActivity() {
 
         // Update the circular countdown view with progress only (no text)
         circularCountdownView.progress = progress
+    }
+
+    private fun currentVideoId(): String {
+        // Prefer mediaId if you set it when creating MediaItems
+        player?.currentMediaItem?.mediaId?.let { if (it.isNotBlank()) return it }
+
+        // Fallback: use filename from uri
+        val uri = player?.currentMediaItem?.localConfiguration?.uri
+        return uri?.lastPathSegment ?: "unknown_video"
+    }
+
+    private fun recordDecision(decision: String) {
+        val videoName = currentVideoId()
+
+        decisionStore.setDecision(participantId, videoName, decision)
+
+        Toast.makeText(this, "$decision: $videoName", Toast.LENGTH_SHORT).show()
     }
 
     /**
