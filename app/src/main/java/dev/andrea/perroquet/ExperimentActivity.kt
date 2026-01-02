@@ -32,6 +32,8 @@ import dev.andrea.perroquet.logging.EventType
 import dev.andrea.perroquet.usbserial.SerialPortHelper
 import dev.andrea.perroquet.util.SessionVideoLoader
 import dev.andrea.perroquet.util.VideoProgressStore
+import dev.andrea.perroquet.util.RunStore
+
 
 class ExperimentActivity : BaseExperimentActivity() {
 
@@ -57,6 +59,9 @@ class ExperimentActivity : BaseExperimentActivity() {
 
     private var participantId: Int = -1
     private var dateString: String = ""
+
+    private var runId: String = ""
+
     var config: ExperimentConfig.Standard? = null
     var videoQueue: List<String> = emptyList()
     private val videoLoader by lazy { SessionVideoLoader(this) }
@@ -114,19 +119,22 @@ class ExperimentActivity : BaseExperimentActivity() {
         // Get intent data
         participantId = intent.getIntExtra("PARTICIPANT_ID", -1)
         dateString = intent.getStringExtra("DATE") ?: LocalDate.now().toString()
+        runId = intent.getStringExtra("RUN_ID") ?: java.util.UUID.randomUUID().toString()
+
+
+        val runDir = RunStore.getOrCreateRunDir(this, participantId, dateString, runId)
+        val logDir = File(runDir, "logs").apply { mkdirs() }
+
 
         // Create experiment config
         config = ExperimentConfig.Standard(
             participantId = participantId,
             date = LocalDate.parse(dateString),
-            sessionNumber = intent.getIntExtra("SESSION_NUMBER", 1)
+            runId = runId
         )
 
         // Load ALL videos in fixed order (1..65)
         videoQueue = videoLoader.loadVideosInOrder()
-
-        videoQueue = videoLoader.loadVideosInOrder()
-
         val blocks = config?.blocks ?: 3
         val trials = config?.trialsPerBlock ?: 5
         val needed = blocks * trials
@@ -208,12 +216,9 @@ class ExperimentActivity : BaseExperimentActivity() {
         startButton.visibility = View.GONE
 
         // Initialize event logger
-        eventLogger = EventLogger.initialize(this, this.experimentStartTime)
-        eventLogger.setExperimentInfo(
-            participantId,
-            config?.sessionNumber ?: 1,  // Default to session 1 if config is null
-            dateString
-        )
+        eventLogger = EventLogger.initialize(this, this.experimentStartTime, logDir)
+        eventLogger.setExperimentInfo(participantId, dateString, runId)
+
 
         // Initialize serial port helper
         serialPortHelper = SerialPortHelper(this)
@@ -466,13 +471,11 @@ class ExperimentActivity : BaseExperimentActivity() {
             }
 
             ExperimentState.EXPERIMENT_END -> {
-                // Log experiment end
                 eventLogger.logEvent(EventType.EXPERIMENT_END)
-
-                // Save all events
                 eventLogger.saveEvents()
 
-                // Experiment complete
+                progressStore.setLastCompletedIndex(participantId, -1)
+
                 nextButton.isEnabled = false
                 nextButton.text = "Done"
             }
@@ -849,6 +852,8 @@ class ExperimentActivity : BaseExperimentActivity() {
         // Start recording
         audioRecorder.startRecording(
             participantId = participantId,
+            runId = runId,
+            date = dateString,
             blockNumber = currentBlock,
             trialNumber = currentTrial,
             onComplete = { file ->

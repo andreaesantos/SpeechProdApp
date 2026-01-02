@@ -14,7 +14,8 @@ sealed class ExperimentConfig {
     data class Standard(
         val participantId: Int,
         val date: LocalDate,
-        val sessionNumber: Int,
+        val sessionNumber: Int = 1,
+        val runId: String = java.util.UUID.randomUUID().toString(),
         val blocks: Int = 10,
         val trialsPerBlock: Int = 10,
         val videoNames: List<String> = List(15) { "video${it + 1}" },

@@ -14,10 +14,26 @@ android {
         targetSdk = 35
         versionCode = 2
         versionName = "1.1.0"
-
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
-    
+
+    // ✅ Add this
+    flavorDimensions += "app"
+    productFlavors {
+        create("classic") {
+            dimension = "app"
+            applicationIdSuffix = ".classic"
+            versionNameSuffix = "-classic"
+            resValue("string", "app_name", "Perroquet Classic")
+        }
+        create("experimental") {
+            dimension = "app"
+            applicationIdSuffix = ".exp"
+            versionNameSuffix = "-exp"
+            resValue("string", "app_name", "Perroquet Experimental")
+        }
+    }
+
     lint {
         baseline = file("lint-baseline.xml")
     }
@@ -31,18 +47,16 @@ android {
             )
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
-        // Enable core library desugaring
         isCoreLibraryDesugaringEnabled = true
     }
-    kotlinOptions {
-        jvmTarget = "11"
-    }
-    buildFeatures {
-        compose = true
-    }
+
+    kotlinOptions { jvmTarget = "11" }
+
+    buildFeatures { compose = true }
 }
 
 dependencies {

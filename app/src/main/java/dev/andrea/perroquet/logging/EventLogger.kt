@@ -16,6 +16,8 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.concurrent.CopyOnWriteArrayList
+import dev.andrea.perroquet.util.RunStore
+
 
 /**
  * Event data class for logging experiment events
@@ -60,7 +62,8 @@ enum class EventType {
  */
 class EventLogger private constructor(
     private val context: Context,
-    private val experimentStartTime: Long
+    private val experimentStartTime: Long,
+    private val logDir: File
 ) {
     private val events = CopyOnWriteArrayList<ExperimentEvent>()
     private val mutex = Mutex()
@@ -68,19 +71,19 @@ class EventLogger private constructor(
     private val gson: Gson = GsonBuilder().setPrettyPrinting().create()
 
     private var participantId: Int = -1
-    private var sessionNumber: Int = 1
+
+    private var runId: String = ""
     private var sessionDate: String = ""
+
 
     companion object {
         private const val TAG = "EventLogger"
         private var instance: EventLogger? = null
 
-        fun initialize(context: Context, experimentStartTime: Long): EventLogger {
+        fun initialize(context: Context, experimentStartTime: Long, logDir: File): EventLogger {
             return instance ?: synchronized(this) {
-                instance ?: EventLogger(
-                    context.applicationContext,
-                    experimentStartTime
-                ).also { instance = it }
+                instance ?: EventLogger(context.applicationContext, experimentStartTime, logDir)
+                    .also { instance = it }
             }
         }
 
@@ -92,10 +95,10 @@ class EventLogger private constructor(
     /**
      * Set experiment metadata
      */
-    fun setExperimentInfo(participantId: Int, sessionNumber: Int, date: String) {
+    fun setExperimentInfo(participantId: Int, date: String, runId: String) {
         this.participantId = participantId
-        this.sessionNumber = sessionNumber
         this.sessionDate = date
+        this.runId = runId
         Log.d(TAG, "Experiment start time set: $experimentStartTime")
     }
 
@@ -278,8 +281,11 @@ class EventLogger private constructor(
             mutex.withLock {
                 try {
                     val logsDir = ensureLogsDirectory()
-                    val prefix = if (is_intermediate) "intermediate_" else ""
-                    val fileName = "${prefix}p${participantId}_${sessionDate}.json"
+                    val fileName = if (is_intermediate) {
+                        "intermediate_p${participantId}_${sessionDate}_run_${runId}.json"
+                    } else {
+                        "p${participantId}_${sessionDate}_run_${runId}.json"
+                    }
                     val logFile = File(logsDir, fileName)
 
                     // Create a copy of events to avoid concurrent modification
@@ -303,9 +309,13 @@ class EventLogger private constructor(
      * Ensure the logs directory exists
      */
     private fun ensureLogsDirectory(): File {
-        val participantDir = File(context.getExternalFilesDir(null), "participant_$participantId")
-        val sessionDir = File(participantDir, "session_$sessionNumber")
-        val logsDir = File(sessionDir, "logs")
+        val runDir = RunStore.getOrCreateRunDir(
+            context = context,
+            participantId = participantId,
+            date = sessionDate,
+            runId = runId
+        )
+        val logsDir = File(runDir, "logs")
 
         if (!logsDir.exists()) {
             if (logsDir.mkdirs()) {
@@ -314,7 +324,6 @@ class EventLogger private constructor(
                 Log.e(TAG, "Failed to create logs directory: ${logsDir.absolutePath}")
             }
         }
-
         return logsDir
     }
 
@@ -322,9 +331,13 @@ class EventLogger private constructor(
      * Get the audio directory
      */
     fun getAudioDirectory(): File {
-        val participantDir = File(context.getExternalFilesDir(null), "participant_$participantId")
-        val sessionDir = File(participantDir, "session_$sessionNumber")
-        val audioDir = File(sessionDir, "audio")
+        val runDir = RunStore.getOrCreateRunDir(
+            context = context,
+            participantId = participantId,
+            date = sessionDate,
+            runId = runId
+        )
+        val audioDir = File(runDir, "audio")
 
         if (!audioDir.exists()) {
             if (audioDir.mkdirs()) {
@@ -333,7 +346,6 @@ class EventLogger private constructor(
                 Log.e(TAG, "Failed to create audio directory: ${audioDir.absolutePath}")
             }
         }
-
         return audioDir
     }
 

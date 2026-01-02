@@ -2,24 +2,17 @@ package dev.andrea.perroquet
 
 import android.content.Intent
 import android.os.Bundle
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.unit.dp
 import dev.andrea.perroquet.ui.theme.MyApplicationTheme
-import dev.andrea.perroquet.util.SessionStore
 import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 class ParticipantInputActivity : ComponentActivity() {
-    private val sessionStore by lazy { SessionStore(this) }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
@@ -29,19 +22,15 @@ class ParticipantInputActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     ParticipantInputScreen(
-                        onStartExperiment = { participantId, sessionNumber ->
-                            if (sessionStore.hasUsedSession(participantId, sessionNumber)) {
-                                Toast.makeText(
-                                    this,
-                                    "Error: Participant $participantId already has session $sessionNumber",
-                                    Toast.LENGTH_LONG
-                                ).show()
-                            } else {
-                                // Option A: reserve immediately (prevents repeats even if they back out)
-                                sessionStore.markSessionUsed(participantId, sessionNumber)
+                        onStartExperiment = { participantId ->
+                            val date = LocalDate.now().toString()
+                            val runId = generateRunId()
 
-                                navigateToInstructions(participantId, sessionNumber)
-                            }
+                            navigateToInstructions(
+                                participantId = participantId,
+                                date = date,
+                                runId = runId
+                            )
                         }
                     )
                 }
@@ -49,11 +38,17 @@ class ParticipantInputActivity : ComponentActivity() {
         }
     }
 
-    private fun navigateToInstructions(participantId: Int, sessionNumber: Int) {
+    private fun generateRunId(): String {
+        // Human-readable + very unlikely to collide
+        val fmt = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss_SSS")
+        return LocalDateTime.now().format(fmt)
+    }
+
+    private fun navigateToInstructions(participantId: Int, date: String, runId: String) {
         val intent = Intent(this, InstructionActivity::class.java).apply {
             putExtra("PARTICIPANT_ID", participantId)
-            putExtra("DATE", LocalDate.now().toString())
-            putExtra("SESSION_NUMBER", sessionNumber)
+            putExtra("DATE", date)
+            putExtra("RUN_ID", runId)
         }
         startActivity(intent)
     }
@@ -61,17 +56,12 @@ class ParticipantInputActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ParticipantInputScreen(onStartExperiment: (Int, Int) -> Unit) {
+fun ParticipantInputScreen(onStartExperiment: (Int) -> Unit) {
     var participantIdText by remember { mutableStateOf("") }
-    var sessionNumberText by remember { mutableStateOf("1") }
-
     var participantError by remember { mutableStateOf(false) }
-    var sessionError by remember { mutableStateOf(false) }
 
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
+        modifier = Modifier.fillMaxSize().padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -93,50 +83,19 @@ fun ParticipantInputScreen(onStartExperiment: (Int, Int) -> Unit) {
             supportingText = {
                 if (participantError) Text("Participant ID must be a positive number")
             },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 16.dp)
-        )
-
-        OutlinedTextField(
-            value = sessionNumberText,
-            onValueChange = {
-                // keep digits only (optional, but nice to avoid junk input)
-                sessionNumberText = it.filter { ch -> ch.isDigit() }
-                sessionError = false
-            },
-            label = { Text("Session number") },
-            placeholder = { Text("e.g., 1") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            isError = sessionError,
-            supportingText = {
-                if (sessionError) Text("Session must be a positive number")
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 24.dp)
+            modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp)
         )
 
         Button(
             onClick = {
                 val participantId = participantIdText.toIntOrNull()
-                val sessionNumber = sessionNumberText.toIntOrNull()
-
                 val validParticipant =
                     participantId != null && ExperimentConfig.isValidParticipantId(participantId)
-                val validSession =
-                    sessionNumber != null && sessionNumber > 0
 
                 participantError = !validParticipant
-                sessionError = !validSession
-
-                if (validParticipant && validSession) {
-                    onStartExperiment(participantId!!, sessionNumber!!)
-                }
+                if (validParticipant) onStartExperiment(participantId!!)
             },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(50.dp)
+            modifier = Modifier.fillMaxWidth().height(50.dp)
         ) {
             Text("Start Experiment")
         }
