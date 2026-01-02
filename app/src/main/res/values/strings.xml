@@ -1,4 +1,23 @@
 <resources>
     <string name="app_name">Perroquet</string>
     <string name="instruction_demo_description">Instruction demo showing the experiment interface</string>
+
+    <!-- Debug/status labels -->
+    <string name="status_idle">Status: IDLE</string>
+    <string name="block_initial">Block: 0 / 0</string>
+    <string name="trial_initial">Trial: 0 / 0</string>
+    <string name="time_initial">Time: 00:00.000</string>
+
+    <!-- Connection / battery -->
+    <string name="usb_disconnected">USB: Disconnected</string>
+    <string name="battery_warning">Battery Warning</string>
+
+    <!-- Main content -->
+    <string name="experiment_content_area">Experiment Content Area</string>
+
+    <!-- Buttons -->
+    <string name="start_experiment">Start Experiment</string>
+    <string name="suivant">Next</string>
+    <string name="recharger">Reload</string>
+    <string name="sortir">Exit</string>
 </resources>

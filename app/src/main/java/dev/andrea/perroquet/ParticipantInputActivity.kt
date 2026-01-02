@@ -63,7 +63,7 @@ fun ParticipantInputScreen(onStartExperiment: (Int, Int) -> Unit) {
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = "Brain Recording Experiment",
+            text = "Répétition de Mots",
             style = MaterialTheme.typography.headlineMedium,
             modifier = Modifier.padding(bottom = 32.dp)
         )

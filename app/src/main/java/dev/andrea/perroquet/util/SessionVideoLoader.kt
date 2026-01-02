@@ -2,6 +2,7 @@ package dev.andrea.perroquet.util
 
 import android.content.Context
 import android.util.Log
+import dev.andrea.perroquet.R
 import java.io.BufferedReader
 import java.io.InputStreamReader
 
@@ -12,24 +13,35 @@ class SessionVideoLoader(private val context: Context) {
 
     companion object {
         private const val TAG = "SessionVideoLoader"
-        private const val CSV_FILE_NAME = "final_video_list" // res/raw/final_video_list.csv
+        private const val CSV_FILE_NAME = "perroquet_video_list" // res/raw/final_video_list.csv
     }
 
     fun loadVideosInOrder(): List<String> {
-        return try {
-            val resourceId = context.resources.getIdentifier(CSV_FILE_NAME, "raw", context.packageName)
-            if (resourceId == 0) {
-                Log.e(TAG, "CSV file not found: $CSV_FILE_NAME")
-                return emptyList()
-            }
+        // 1) Resolve CSV resource id safely
+        val resourceId = runCatching { R.raw.perroquet_video_list }.getOrNull()
+        if (resourceId == null || resourceId == 0) {
+            Log.e(TAG, "CSV raw resource not found: R.raw.perroquet_video_list")
+            return emptyList()
+        }
 
+        // 2) Parse CSV
+        val videos = try {
             context.resources.openRawResource(resourceId).use { inputStream ->
                 BufferedReader(InputStreamReader(inputStream)).use { reader ->
-                    val header = reader.readLine() ?: return emptyList()
-                    val headers = header.split(",").map { it.trim().lowercase() }
 
+                    val headerLine = reader.readLine()
+                    if (headerLine.isNullOrBlank()) {
+                        Log.e(TAG, "CSV is empty or missing header row.")
+                        return emptyList()
+                    }
+
+                    val headers = headerLine
+                        .removePrefix("\uFEFF")   // strip UTF-8 BOM if present
+                        .split(",")
+                        .map { it.trim().lowercase() }
                     val orderIdx = headers.indexOf("order")
                     val filenameIdx = headers.indexOf("filename")
+
                     if (orderIdx == -1 || filenameIdx == -1) {
                         Log.e(TAG, "CSV must contain headers: order, filename. Found: $headers")
                         return emptyList()
@@ -46,6 +58,8 @@ class SessionVideoLoader(private val context: Context) {
 
                         val order = cols[orderIdx].toIntOrNull() ?: continue
                         val filename = cols[filenameIdx]
+                        if (filename.isBlank()) continue
+
                         rows.add(order to filename)
                     }
 
@@ -53,8 +67,17 @@ class SessionVideoLoader(private val context: Context) {
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error loading videos: ${e.message}", e)
+            Log.e(TAG, "Error loading videos from CSV: ${e.message}", e)
             emptyList()
         }
+
+        // 3) Handle “no videos found”
+        if (videos.isEmpty()) {
+            Log.w(TAG, "No videos found in CSV (or none parsed successfully).")
+        } else {
+            Log.i(TAG, "Loaded ${videos.size} video(s) from CSV. First: ${videos.first()}")
+        }
+
+        return videos
     }
 }

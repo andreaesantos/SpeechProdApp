@@ -41,6 +41,9 @@ class ExperimentActivity : BaseExperimentActivity() {
     private lateinit var timeTextView: TextView
     private lateinit var startButton: Button
     private lateinit var nextButton: Button
+    private lateinit var reloadButton: Button
+
+    private lateinit var exitButton: Button
     private lateinit var playerView: PlayerView
     private lateinit var experimentContentTextView: TextView
     private lateinit var microphoneImageView: ImageView
@@ -60,7 +63,8 @@ class ExperimentActivity : BaseExperimentActivity() {
     private val progressStore by lazy { VideoProgressStore(this) }
 
     // offset into the full ordered list (for resume)
-    private var resumeStartIndex: Int = 0
+    var resumeStartIndex: Int = 0
+        private set
 
     private val handler = Handler(Looper.getMainLooper())
     private val updateTimeRunnable = object : Runnable {
@@ -96,6 +100,13 @@ class ExperimentActivity : BaseExperimentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_experiment)
+        reloadButton = findViewById(R.id.reloadButton)
+        reloadButton.visibility = View.GONE
+        exitButton = findViewById(R.id.exitButton)
+
+        exitButton.setOnClickListener {
+            showExitConfirmDialog()
+        }
 
         // Hide the status bar and make the app full screen
         hideSystemUI()
@@ -114,9 +125,17 @@ class ExperimentActivity : BaseExperimentActivity() {
         // Load ALL videos in fixed order (1..65)
         videoQueue = videoLoader.loadVideosInOrder()
 
-        if (videoQueue.size < 65) {
-            Log.e(TAG, "Not enough videos. Got ${videoQueue.size}, need 65")
-            throw IllegalStateException("Not enough videos")
+        videoQueue = videoLoader.loadVideosInOrder()
+
+        val blocks = config?.blocks ?: 3
+        val trials = config?.trialsPerBlock ?: 5
+        val needed = blocks * trials
+
+        if (videoQueue.size < needed) {
+            Log.e(TAG, "Not enough videos. Got ${videoQueue.size}, need $needed (blocks=$blocks trialsPerBlock=$trials)")
+            Toast.makeText(this, "Not enough videos: ${videoQueue.size} (need $needed)", Toast.LENGTH_LONG).show()
+            finish()
+            return
         }
 
         // Read progress and compute where to resume (next trial)
@@ -154,6 +173,11 @@ class ExperimentActivity : BaseExperimentActivity() {
         timeTextView = findViewById(R.id.timeTextView)
         startButton = findViewById(R.id.startButton)
         nextButton = findViewById(R.id.nextButton)
+        reloadButton = findViewById(R.id.reloadButton)
+
+        reloadButton.setOnClickListener {
+            reloadCurrentVideo()
+        }
         playerView = findViewById(R.id.playerView)
         experimentContentTextView = findViewById(R.id.experimentContentTextView)
         recordingContainer = findViewById(R.id.recordingContainer)
@@ -172,7 +196,10 @@ class ExperimentActivity : BaseExperimentActivity() {
         batteryStatusTextView.visibility = View.GONE
 
         // Connect player to view and disable controls
-        playerView.player = player
+        playerView.player = player ?: run {
+            Log.e(TAG, "Player is null when binding to PlayerView")
+            return
+        }
         playerView.useController = false  // Disable the control panel
         playerView.controllerAutoShow = false  // Prevent controls from showing automatically
 
@@ -231,6 +258,47 @@ class ExperimentActivity : BaseExperimentActivity() {
         super.onDestroy()
     }
 
+    override fun onStart() {
+        super.onStart()
+        playerView.player = player  // re-bind after Base may recreate it
+    }
+
+    private fun showExitConfirmDialog() {
+        AlertDialog.Builder(this)
+            .setTitle("Quitter l'expérience ?")
+            .setMessage("L'expérience va s'arrêter maintenant. Voulez-vous quitter ?")
+            .setPositiveButton("Quitter") { _, _ ->
+                exitExperimentNow()
+            }
+            .setNegativeButton("Annuler", null)
+            .show()
+    }
+
+    private fun exitExperimentNow() {
+        try {
+            // Stop video
+            player?.stop()
+
+            // Stop recording if running
+            try { audioRecorder.stopRecording() } catch (_: Exception) {}
+
+            // Save progress at the last completed index (optional)
+            // If you want to mark “aborted”, you can store current absolute index too
+
+            // Log + save
+            try {
+                eventLogger.logEvent(EventType.EXPERIMENT_ABORTED)
+                eventLogger.saveEvents(true)
+            } catch (_: Exception) {}
+
+            // Clean up USB
+            try { serialPortHelper.cleanup() } catch (_: Exception) {}
+
+        } finally {
+            // Close the app
+            finishAffinity()
+        }
+    }
     /**
      * Hides the system UI (status bar and navigation bar)
      */
@@ -446,6 +514,21 @@ class ExperimentActivity : BaseExperimentActivity() {
         }
     }
 
+    private fun reloadCurrentVideo() {
+        val p = playerView.player ?: return
+
+        try {
+            // Restart current media item from the beginning
+            p.seekTo(0)
+            p.play()
+            Log.d(TAG, "Reloaded current video (seekTo 0)")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to reload current video: ${e.message}", e)
+            Toast.makeText(this, "Could not reload video", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+
     /**
      * Update the connection status display
      */
@@ -502,12 +585,17 @@ class ExperimentActivity : BaseExperimentActivity() {
         blockTextView.text = "Block: $currentBlock / $totalBlocks"
         trialTextView.text = "Trial: $currentTrial / $trialsPerBlock"
 
+        exitButton.visibility = View.VISIBLE
+        exitButton.bringToFront()
+
         // Update experiment content visibility
         when (state) {
             ExperimentState.TRIAL_VIDEO -> {
                 playerView.visibility = View.VISIBLE
                 experimentContentTextView.visibility = View.GONE
                 fixationCrossLayout.visibility = View.GONE
+
+                reloadButton.visibility = View.VISIBLE
             }
             ExperimentState.FIXATION_DELAY -> {
                 playerView.visibility = View.GONE
@@ -542,6 +630,7 @@ class ExperimentActivity : BaseExperimentActivity() {
                     }
                 }
             }
+
         }
 
         // Update button visibility and state

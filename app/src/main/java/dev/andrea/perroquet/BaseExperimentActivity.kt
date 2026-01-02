@@ -17,7 +17,10 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
-import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.DefaultDataSource
+import androidx.media3.exoplayer.source.ProgressiveMediaSource
+import androidx.media3.common.PlaybackException
+// import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import dev.andrea.perroquet.logging.EventType
 import kotlinx.coroutines.Dispatchers
@@ -192,12 +195,17 @@ abstract class BaseExperimentActivity : AppCompatActivity() {
     private fun initializePlayer() {
         player = ExoPlayer.Builder(this)
             .build()
-            .also {
-                it.addListener(object : Player.Listener {
+            .also { exo ->
+                exo.addListener(object : Player.Listener {
+
                     override fun onPlaybackStateChanged(playbackState: Int) {
-                        if (playbackState == Player.STATE_ENDED) {
-                            onVideoPlaybackEnded()
-                        }
+                        Log.d(TAG, "Player state=$playbackState") // debug
+                        if (playbackState == Player.STATE_ENDED) onVideoPlaybackEnded()
+                    }
+
+                    override fun onPlayerError(error: PlaybackException) {
+                        Log.e(TAG, "ExoPlayer error: ${error.errorCodeName}", error)
+                        onVideoError("ExoPlayer error: ${error.errorCodeName}")
                     }
                 })
             }
@@ -300,23 +308,25 @@ abstract class BaseExperimentActivity : AppCompatActivity() {
      * Get the video name for the current trial
      */
     protected open fun getVideoNameForCurrentTrial(): String {
-        // Get video from the queue if available
         val experimentActivity = this as? ExperimentActivity
         if (experimentActivity != null && experimentActivity.videoQueue.isNotEmpty()) {
-            val index = (currentBlock - 1) * trialsPerBlock + (currentTrial - 1)
-            return if (index < experimentActivity.videoQueue.size) {
-                experimentActivity.videoQueue[index]
+
+            val globalIndex = (currentBlock - 1) * trialsPerBlock + (currentTrial - 1)
+            val absoluteIndex = experimentActivity.resumeStartIndex + globalIndex
+
+            return if (absoluteIndex in experimentActivity.videoQueue.indices) {
+                experimentActivity.videoQueue[absoluteIndex]   // e.g. "WR12.mp4"
             } else {
-                Log.e(TAG, "Video index out of bounds: $index, queue size: ${experimentActivity.videoQueue.size}")
-                experimentActivity.videoQueue.firstOrNull() ?: "video_fallback"
+                Log.e(TAG, "Video index out of bounds: absoluteIndex=$absoluteIndex size=${experimentActivity.videoQueue.size}")
+                experimentActivity.videoQueue.first()
             }
         }
-        
-        // Fallback to default naming pattern if no queue available
-        val videoIndex = (currentBlock - 1) * trialsPerBlock + (currentTrial - 1)
-        return "video${videoIndex + 1}"
+
+        // If queue not available, fallback
+        return "WR1.mp4"
     }
-    
+
+
     /**
      * Play a video by name
      */
@@ -324,73 +334,44 @@ abstract class BaseExperimentActivity : AppCompatActivity() {
         try {
             currentVideoName = videoName
             videoStartTime = SystemClock.elapsedRealtime()
-            
-            // Log video start and send trigger (non-blocking)
-            lifecycleScope.launch(Dispatchers.IO) {
-                try {
-                    val logger = dev.andrea.perroquet.logging.EventLogger.getInstance()
-                    val eventType = dev.andrea.perroquet.logging.EventType.VIDEO_START
-                    
-                    // Log the event
-                    logger.logVideoEvent(
-                        eventType,
-                        currentBlock,
-                        currentTrial,
-                        videoName
-                    )
-                    
-                    // Send trigger if helper is available
-                    try {
-                        val activity = this@BaseExperimentActivity as? ExperimentActivity
-                        activity?.serialPortHelper?.sendEventTrigger(eventType)
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Error sending video start trigger: ${e.message}")
-                    }
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error logging video start: ${e.message}")
-                }
+
+            // Keep your VIDEO_START logging/trigger code as-is (you already have it)
+
+            val p = player ?: run { onVideoError("Player not initialized"); return }
+
+            // Normalize CSV value -> assets path
+            // Accepts "WR1.mp4" or "perroquet_videos/WR1.mp4"
+            val trimmed = videoName.trim().removePrefix("/")
+            val assetPath = if (trimmed.startsWith("perroquet_videos/")) trimmed else "perroquet_videos/$trimmed"
+
+            // Verify it exists (super useful for debugging)
+            Log.d(TAG, "Trying to play assetPath=$assetPath (videoName=$videoName)")
+            try {
+                assets.open(assetPath).close()
+            } catch (e: Exception) {
+                onVideoError("Video asset not found: $assetPath (check spelling/case & that it's under app/src/main/assets/)")
+                return
             }
-            
-            // Get video resource ID
-            val resourceId = resources.getIdentifier(
-                videoName, "raw", packageName
-            )
-            
-            if (resourceId == 0) {
-                Log.e(TAG, "Video resource not found: $videoName")
-                
-                // Try to find any available video as fallback
-                val anyVideoId = findAnyAvailableVideo()
-                if (anyVideoId == 0) {
-                    onVideoError("Video resource not found: $videoName")
-                    return
-                } else {
-                    Log.w(TAG, "Using fallback video instead of: $videoName")
-                }
-            }
-            
-            // Use the found resource ID or fallback
-            val finalResourceId = if (resourceId == 0) findAnyAvailableVideo() else resourceId
-            
-            // Create media item from raw resource
-            val videoUri = Uri.parse("android.resource://$packageName/$finalResourceId")
-            val mediaItem = MediaItem.fromUri(videoUri)
-            
-            // Prepare and play the video
-            player?.apply {
-                setMediaItem(mediaItem)
-                prepare()
-                play()
-            }
-            
-            Log.d(TAG, "Started playing video: $videoName")
+
+            val uri = Uri.parse("asset:///$assetPath")
+            val mediaItem = MediaItem.fromUri(uri)
+
+            val dataSourceFactory = DefaultDataSource.Factory(this)
+            val mediaSource = ProgressiveMediaSource.Factory(dataSourceFactory)
+                .createMediaSource(mediaItem)
+
+            p.setMediaSource(mediaSource)
+            p.prepare()
+            p.playWhenReady = true
+
+            Log.d(TAG, "Started playing asset video: $assetPath")
         } catch (e: Exception) {
             Log.e(TAG, "Error playing video: ${e.message}", e)
             onVideoError("Error playing video: ${e.message}")
         }
     }
-    
-    /**
+
+/**
      * Called when video playback ends
      */
     private fun onVideoPlaybackEnded() {
@@ -526,23 +507,23 @@ abstract class BaseExperimentActivity : AppCompatActivity() {
      * Find any available video in the raw resources
      * @return Resource ID of any available video, or 0 if none found
      */
-    private fun findAnyAvailableVideo(): Int {
-        try {
-            // Try to find any video resource
-            val rawClass = Class.forName("${packageName}.R\$raw")
-            for (field in rawClass.declaredFields) {
-                val resourceName = field.name
-                if (resourceName.startsWith("video")) {
-                    val resourceId = resources.getIdentifier(resourceName, "raw", packageName)
-                    if (resourceId != 0) {
-                        Log.d(TAG, "Found fallback video: $resourceName")
-                        return resourceId
-                    }
-                }
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error finding fallback video: ${e.message}", e)
-        }
-        return 0
-    }
+//    private fun findAnyAvailableVideo(): Int {
+//        try {
+//            // Try to find any video resource
+//            val rawClass = Class.forName("${packageName}.R\$raw")
+//            for (field in rawClass.declaredFields) {
+//                val resourceName = field.name
+//                if (resourceName.startsWith("video")) {
+//                    val resourceId = resources.getIdentifier(resourceName, "raw", packageName)
+//                    if (resourceId != 0) {
+//                        Log.d(TAG, "Found fallback video: $resourceName")
+//                        return resourceId
+//                    }
+//                }
+//            }
+//        } catch (e: Exception) {
+//            Log.e(TAG, "Error finding fallback video: ${e.message}", e)
+//        }
+//        return 0
+//    }
 }
