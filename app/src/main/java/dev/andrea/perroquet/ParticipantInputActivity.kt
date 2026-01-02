@@ -210,7 +210,7 @@ private fun ModePickerScreen(
             modifier = Modifier.fillMaxWidth().height(70.dp)
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("Run passed-only")
+                Text("Clinical Stimulations")
                 Text(
                     text = if (passedEnabled) {
                         "Only videos you marked PASS ($passedCount)"
