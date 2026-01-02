@@ -15,9 +15,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import dev.andrea.perroquet.ui.theme.MyApplicationTheme
+import dev.andrea.perroquet.util.SessionStore
 import java.time.LocalDate
 
 class ParticipantInputActivity : ComponentActivity() {
+    private val sessionStore by lazy { SessionStore(this) }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
@@ -28,7 +30,18 @@ class ParticipantInputActivity : ComponentActivity() {
                 ) {
                     ParticipantInputScreen(
                         onStartExperiment = { participantId, sessionNumber ->
-                            navigateToInstructions(participantId, sessionNumber)
+                            if (sessionStore.hasUsedSession(participantId, sessionNumber)) {
+                                Toast.makeText(
+                                    this,
+                                    "Error: Participant $participantId already has session $sessionNumber",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            } else {
+                                // Option A: reserve immediately (prevents repeats even if they back out)
+                                sessionStore.markSessionUsed(participantId, sessionNumber)
+
+                                navigateToInstructions(participantId, sessionNumber)
+                            }
                         }
                     )
                 }
