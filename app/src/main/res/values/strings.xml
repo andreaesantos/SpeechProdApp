@@ -19,7 +19,7 @@
     <string name="start_experiment">Start Experiment</string>
     <string name="suivant">Next</string>
     <string name="recharger">Reload</string>
-    <string name="pass">Reload</string>
-    <string name="fail">Reload</string>
+    <string name="pass">Pass</string>
+    <string name="fail">Fail</string>
     <string name="sortir">Exit</string>
 </resources>

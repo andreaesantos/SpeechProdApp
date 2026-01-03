@@ -620,8 +620,8 @@ class ExperimentActivity : BaseExperimentActivity() {
                 playerView.visibility = View.VISIBLE
                 experimentContentTextView.visibility = View.GONE
                 fixationCrossLayout.visibility = View.GONE
-                passButton.visibility = View.VISIBLE
-                failButton.visibility = View.VISIBLE
+                passButton.visibility = View.GONE
+                failButton.visibility = View.GONE
 
                 reloadButton.visibility = View.VISIBLE
             }
@@ -652,6 +652,8 @@ class ExperimentActivity : BaseExperimentActivity() {
                 if (state == ExperimentState.SPEECH_RECORDING) {
                     experimentContentTextView.visibility = View.GONE
                     recordingContainer.visibility = View.VISIBLE
+                    passButton.visibility = View.VISIBLE
+                    failButton.visibility = View.VISIBLE
                     startMicAnimation()
                 } else {
                     experimentContentTextView.visibility = View.VISIBLE

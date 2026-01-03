@@ -142,30 +142,31 @@
         android:orientation="horizontal"
         android:padding="16dp"
         android:gravity="center_vertical"
+        android:weightSum="6"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintBottom_toBottomOf="parent">
 
         <Button
             android:id="@+id/startButton"
-            android:layout_width="match_parent"
-            android:layout_weight="1"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_weight="1"
             android:text="@string/start_experiment"/>
 
         <Button
             android:id="@+id/nextButton"
-            android:layout_width="match_parent"
-            android:layout_weight="1"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_weight="1"
             android:text="@string/suivant"
             android:visibility="gone"/>
 
         <Button
             android:id="@+id/reloadButton"
-            android:layout_width="match_parent"
-            android:layout_weight="1"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_weight="1"
             android:text="@string/recharger"
             android:visibility="gone"/>
 
@@ -173,35 +174,25 @@
             android:id="@+id/failButton"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:text="@string/pass"
-            android:visibility="gone"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toStartOf="@+id/passButton"
-            app:layout_constraintHorizontal_weight="1"
-            android:layout_margin="8dp"/>
+            android:layout_weight="1"
+            android:text="@string/fail"
+            android:visibility="gone"/>
 
         <Button
             android:id="@+id/passButton"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:text="@string/fail"
-            android:visibility="gone"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintStart_toEndOf="@+id/failButton"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintHorizontal_weight="1"
-            android:layout_margin="8dp"/>
+            android:layout_weight="1"
+            android:text="@string/pass"
+            android:visibility="gone"/>
 
         <Button
             android:id="@+id/exitButton"
-            android:layout_width="match_parent"
-            android:layout_weight="1"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_weight="1"
             android:text="@string/sortir"
             android:visibility="gone"/>
-
-
     </LinearLayout>
 
 
