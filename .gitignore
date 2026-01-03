@@ -9,6 +9,8 @@
 /.idea/assetWizardSettings.xml
 app/src/main/res/raw
 app/src/main/assets/perroquet_videos
+*.json
+app/src/main/storage
 .DS_Store
 /build
 /captures
