@@ -136,20 +136,10 @@ class ExperimentActivity : BaseExperimentActivity() {
         val runDir = RunStore.getOrCreateRunDir(this, participantId, dateString, runId)
         val logDir = File(runDir, "logs").apply { mkdirs() }
 
-        val mode = intent.getStringExtra(ParticipantInputActivity.EXTRA_MODE) ?: ParticipantInputActivity.MODE_FULL
-        val allVideos = videoLoader.loadVideosInOrder()
+        val mode = intent.getStringExtra(ParticipantInputActivity.EXTRA_MODE)
+            ?: ParticipantInputActivity.MODE_FULL
 
-        if (mode == ParticipantInputActivity.MODE_PASSED_ONLY && videoQueue.isEmpty()) {
-            Toast.makeText(this, "No passed videos yet", Toast.LENGTH_LONG).show()
-            finish()
-            return
-        }
-        // Create experiment config
-        config = ExperimentConfig.Standard(
-            participantId = participantId,
-            date = LocalDate.parse(dateString),
-            runId = runId
-        )
+        val allVideos = videoLoader.loadVideosInOrder()
 
         videoQueue = if (mode == ParticipantInputActivity.MODE_PASSED_ONLY) {
             val passed = decisionStore.getPassedVideos(participantId)
@@ -157,6 +147,19 @@ class ExperimentActivity : BaseExperimentActivity() {
         } else {
             allVideos
         }
+
+        if (mode == ParticipantInputActivity.MODE_PASSED_ONLY && videoQueue.isEmpty()) {
+            Toast.makeText(this, "No passed videos yet", Toast.LENGTH_LONG).show()
+            finish()
+            return
+        }
+
+        // Create experiment config
+        config = ExperimentConfig.Standard(
+            participantId = participantId,
+            date = LocalDate.parse(dateString),
+            runId = runId
+        )
 
         val blocks = config?.blocks ?: 3
         val trials = config?.trialsPerBlock ?: 5
