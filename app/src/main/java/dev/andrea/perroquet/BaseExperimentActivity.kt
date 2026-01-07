@@ -39,10 +39,10 @@ abstract class BaseExperimentActivity : AppCompatActivity() {
     val experimentState: StateFlow<ExperimentState> = _experimentState.asStateFlow()
 
     // Counters
-    protected var currentBlock = 0
-    protected var currentTrial = 0
-    protected var totalBlocks = 0
-    protected var trialsPerBlock = 0
+    // Counters (no blocks)
+    protected var currentTrial = 0           // 1-based after starting
+    protected var totalTrials = 0
+
 
     // Time tracking
     var experimentStartTime = 0L
@@ -222,16 +222,14 @@ abstract class BaseExperimentActivity : AppCompatActivity() {
     /**
      * Initialize experiment with configuration parameters
      */
-    protected fun initializeExperiment(blocks: Int, trialsPerBlock: Int) {
-        this.totalBlocks = blocks
-        this.trialsPerBlock = trialsPerBlock
-        this.currentBlock = 0
+    protected fun initializeExperiment(totalTrials: Int) {
+        this.totalTrials = totalTrials
         this.currentTrial = 0
         this.experimentStartTime = SystemClock.elapsedRealtime()
-        
-        // Start in IDLE state
+
         transitionToState(ExperimentState.IDLE)
     }
+
 
     /**
      * Transition to a new state
@@ -311,18 +309,16 @@ abstract class BaseExperimentActivity : AppCompatActivity() {
         val experimentActivity = this as? ExperimentActivity
         if (experimentActivity != null && experimentActivity.videoQueue.isNotEmpty()) {
 
-            val globalIndex = (currentBlock - 1) * trialsPerBlock + (currentTrial - 1)
-            val absoluteIndex = experimentActivity.resumeStartIndex + globalIndex
+            val absoluteIndex = experimentActivity.resumeStartIndex + (currentTrial - 1)
 
             return if (absoluteIndex in experimentActivity.videoQueue.indices) {
-                experimentActivity.videoQueue[absoluteIndex]   // e.g. "WR12.mp4"
+                experimentActivity.videoQueue[absoluteIndex]
             } else {
                 Log.e(TAG, "Video index out of bounds: absoluteIndex=$absoluteIndex size=${experimentActivity.videoQueue.size}")
                 experimentActivity.videoQueue.first()
             }
         }
 
-        // If queue not available, fallback
         return "WR1.mp4"
     }
 
@@ -337,7 +333,7 @@ abstract class BaseExperimentActivity : AppCompatActivity() {
                 try {
                     val logger = dev.andrea.perroquet.logging.EventLogger.getInstance()
                     val eventType = dev.andrea.perroquet.logging.EventType.VIDEO_START
-                    logger.logVideoEvent(eventType, currentBlock, currentTrial, currentVideoName ?: "unknown")
+                    logger.logVideoEvent(eventType, null, currentTrial, currentVideoName ?: "unknown")
 
                     val activity = this@BaseExperimentActivity as? ExperimentActivity
                     activity?.serialPortHelper?.sendEventTrigger(eventType)
@@ -404,7 +400,7 @@ abstract class BaseExperimentActivity : AppCompatActivity() {
                     // Log the event
                     logger.logVideoEvent(
                         eventType,
-                        currentBlock,
+                        null,
                         currentTrial,
                         currentVideoName ?: "unknown"
                     )
@@ -457,29 +453,15 @@ abstract class BaseExperimentActivity : AppCompatActivity() {
     }
 
     /**
-     * Start the next block
-     */
-    protected fun startNextBlock() {
-        currentBlock++
-        currentTrial = 0
-        
-        if (currentBlock <= totalBlocks) {
-            transitionToState(ExperimentState.BLOCK_START)
-        } else {
-            transitionToState(ExperimentState.EXPERIMENT_END)
-        }
-    }
-
-    /**
      * Start the next trial
      */
     protected fun startNextTrial() {
         currentTrial++
-        
-        if (currentTrial <= trialsPerBlock) {
+
+        if (currentTrial <= totalTrials) {
             transitionToState(ExperimentState.TRIAL_VIDEO)
         } else {
-            transitionToState(ExperimentState.BLOCK_END)
+            transitionToState(ExperimentState.EXPERIMENT_END)
         }
     }
 

@@ -38,7 +38,6 @@ import dev.andrea.perroquet.util.RunStore
 class ExperimentActivity : BaseExperimentActivity() {
 
     private lateinit var statusTextView: TextView
-    private lateinit var blockTextView: TextView
     private lateinit var trialTextView: TextView
     private lateinit var timeTextView: TextView
     private lateinit var startButton: Button
@@ -161,31 +160,28 @@ class ExperimentActivity : BaseExperimentActivity() {
             runId = runId
         )
 
-        val blocks = config?.blocks ?: 3
-        val trials = config?.trialsPerBlock ?: 5
-        val needed = blocks * trials
-
-        if (videoQueue.size < needed) {
-            Log.e(TAG, "Not enough videos. Got ${videoQueue.size}, need $needed (blocks=$blocks trialsPerBlock=$trials)")
-            Toast.makeText(this, "Not enough videos: ${videoQueue.size} (need $needed)", Toast.LENGTH_LONG).show()
-            finish()
-            return
-        }
-
         // Read progress and compute where to resume (next trial)
         val lastCompleted = progressStore.getLastCompletedIndex(participantId) // -1 if none
         resumeStartIndex = (lastCompleted + 1).coerceAtLeast(0)
 
         if (resumeStartIndex >= videoQueue.size) {
             Log.d(TAG, "Participant already completed all videos. lastCompleted=$lastCompleted")
-            // You can decide what to do: finish, show message, etc.
-            // For now, start from beginning (or end the experiment)
             resumeStartIndex = 0
         }
 
-        // Debug
-        Log.d(TAG, "Resume: lastCompleted=$lastCompleted -> startIndex=$resumeStartIndex")
+        // NEW: compute remaining trials based on resume point
+        val remaining = videoQueue.size - resumeStartIndex
+        if (remaining <= 0) {
+            Toast.makeText(this, "No videos remaining to run", Toast.LENGTH_LONG).show()
+            finish()
+            return
+        }
+
+        Log.d(TAG, "Resume: lastCompleted=$lastCompleted -> startIndex=$resumeStartIndex (remaining=$remaining)")
         Log.d(TAG, "Prepared ordered video queue (${videoQueue.size}): ${videoQueue.joinToString()}")
+
+        // Initialize experiment (no blocks)
+        initializeExperiment(remaining)
 
 
         // Log prepared video queue
@@ -202,7 +198,6 @@ class ExperimentActivity : BaseExperimentActivity() {
 
         // Initialize views
         statusTextView = findViewById(R.id.statusTextView)
-        blockTextView = findViewById(R.id.blockTextView)
         trialTextView = findViewById(R.id.trialTextView)
         timeTextView = findViewById(R.id.timeTextView)
         startButton = findViewById(R.id.startButton)
@@ -237,8 +232,6 @@ class ExperimentActivity : BaseExperimentActivity() {
         playerView.useController = false  // Disable the control panel
         playerView.controllerAutoShow = false  // Prevent controls from showing automatically
 
-        // Initialize experiment
-        initializeExperiment(config?.blocks ?: 3, config?.trialsPerBlock ?: 5)
         startButton.visibility = View.GONE
 
         // Initialize event logger
@@ -402,6 +395,7 @@ class ExperimentActivity : BaseExperimentActivity() {
     }
 
     override fun onStateChanged(state: ExperimentState) {
+        super.onStateChanged(state)
         // Log state change with additional details
 //        eventLogger.logStateChange(state.name,)
 
@@ -414,9 +408,6 @@ class ExperimentActivity : BaseExperimentActivity() {
         lifecycleScope.launch(Dispatchers.IO) {
             try {
                 val eventType = when (state) {
-                    ExperimentState.BLOCK_START -> EventType.BLOCK_START
-                    ExperimentState.BLOCK_END -> EventType.BLOCK_END
-                    ExperimentState.EXPERIMENT_END -> EventType.EXPERIMENT_END
                     else -> null
                 }
 
@@ -444,23 +435,6 @@ class ExperimentActivity : BaseExperimentActivity() {
         // No battery status updates on state change
 
         when (state) {
-            ExperimentState.BLOCK_START -> {
-                // Log block start
-                eventLogger.logBlockEvent(EventType.BLOCK_START, currentBlock)
-
-                // Automatically transition to first trial after a short delay
-                handler.postDelayed({
-                    startNextTrial()
-                }, 500)
-            }
-
-            ExperimentState.TRIAL_VIDEO -> {
-                // Log trial start
-//                eventLogger.logTrialEvent(EventType.TRIAL_START, currentBlock, currentTrial)
-
-                // Play video
-                playCurrentTrialVideo()
-            }
 
             ExperimentState.FIXATION_DELAY -> {
                 // Log fixation start
@@ -474,13 +448,6 @@ class ExperimentActivity : BaseExperimentActivity() {
                 // Show fixation cross and start countdown
                 startFixationCountdown(config?.fixationDurationMs ?: 1000) // 1000ms delay
 
-                // log fixation end
-                eventLogger.logEvent(EventType.FIXATION_END)
-
-                // send trigger code
-                lifecycleScope.launch(Dispatchers.IO) {
-                    serialPortHelper.sendEventTrigger(EventType.FIXATION_END)
-                }
             }
 
             ExperimentState.SPEECH_RECORDING -> {
@@ -488,16 +455,13 @@ class ExperimentActivity : BaseExperimentActivity() {
                 startAudioRecording()
             }
 
-            ExperimentState.BLOCK_END -> {
-                // Log block end
-                eventLogger.logBlockEvent(EventType.BLOCK_END, currentBlock)
-
-                // Show next button to proceed to next block
-                nextButton.isEnabled = true
-            }
-
             ExperimentState.EXPERIMENT_END -> {
                 eventLogger.logEvent(EventType.EXPERIMENT_END)
+
+                lifecycleScope.launch(Dispatchers.IO) {
+                    serialPortHelper.sendEventTrigger(EventType.EXPERIMENT_END)
+                }
+
                 eventLogger.saveEvents()
 
                 progressStore.setLastCompletedIndex(participantId, -1)
@@ -523,11 +487,7 @@ class ExperimentActivity : BaseExperimentActivity() {
 
                 // Ensure system UI is hidden when experiment starts
                 hideSystemUI()
-                startNextBlock()
-            }
-
-            ExperimentState.BLOCK_END -> {
-                startNextBlock()
+                startNextTrial()
             }
 
             ExperimentState.EXPERIMENT_END -> {
@@ -610,9 +570,8 @@ class ExperimentActivity : BaseExperimentActivity() {
         // Update status text
         statusTextView.text = "Status: ${state.name}"
 
-        // Update block and trial counters
-        blockTextView.text = "Block: $currentBlock / $totalBlocks"
-        trialTextView.text = "Trial: $currentTrial / $trialsPerBlock"
+        // Update trial counters
+        trialTextView.text = "Trial: $currentTrial / $totalTrials"
 
         exitButton.visibility = View.VISIBLE
         exitButton.bringToFront()
@@ -664,8 +623,6 @@ class ExperimentActivity : BaseExperimentActivity() {
 
                     // Update content text based on state
                     experimentContentTextView.text = when (state) {
-                        ExperimentState.BLOCK_START -> "Début du bloc $currentBlock"
-                        ExperimentState.BLOCK_END -> "Bloc $currentBlock terminé\n\nAppuyez sur Suivant pour continuer"
                         ExperimentState.EXPERIMENT_END -> "Expérience terminée\n\nMerci de votre participation"
                         else -> "Experiment Content Area"
                     }
@@ -680,12 +637,6 @@ class ExperimentActivity : BaseExperimentActivity() {
                 nextButton.visibility = View.VISIBLE
                 nextButton.isEnabled = true
                 nextButton.text = "Démarrer"
-            }
-
-            ExperimentState.BLOCK_END -> {
-                nextButton.visibility = View.VISIBLE
-                nextButton.isEnabled = true
-                nextButton.text = "Bloc suivant"
             }
 
             ExperimentState.EXPERIMENT_END -> {
@@ -735,10 +686,10 @@ class ExperimentActivity : BaseExperimentActivity() {
                         )
 
                         // Continue with next trial
-                        if (currentTrial < trialsPerBlock) {
+                        if (currentTrial < totalTrials) {
                             startNextTrial()
                         } else {
-                            transitionToState(ExperimentState.BLOCK_END)
+                            transitionToState(ExperimentState.EXPERIMENT_END)
                         }
                     }
                     .setNegativeButton("End Experiment") { _, _ ->
@@ -826,9 +777,15 @@ class ExperimentActivity : BaseExperimentActivity() {
                     // Schedule the next update
                     handler.postDelayed(this, updateIntervalMs)
                 } else {
-                    // Countdown finished, move to next state
+                    // Countdown finished: now fixation ends
+                    eventLogger.logEvent(EventType.FIXATION_END)
+                    lifecycleScope.launch(Dispatchers.IO) {
+                        serialPortHelper.sendEventTrigger(EventType.FIXATION_END)
+                    }
+
                     transitionToState(ExperimentState.SPEECH_RECORDING)
                 }
+
             }
         }
 
@@ -909,7 +866,7 @@ class ExperimentActivity : BaseExperimentActivity() {
             participantId = participantId,
             runId = runId,
             date = dateString,
-            blockNumber = currentBlock,
+            blockNumber = null,
             trialNumber = currentTrial,
             onComplete = { file ->
                 currentRecordingFile = file
@@ -918,7 +875,7 @@ class ExperimentActivity : BaseExperimentActivity() {
                 // Log recording end
                 eventLogger.logRecordingEvent(
                     EventType.RECORDING_END,
-                    currentBlock,
+                    null,
                     currentTrial,
                     file.name
                 )
@@ -961,19 +918,17 @@ class ExperimentActivity : BaseExperimentActivity() {
     private fun handleRecordingComplete() {
         stopMicAnimation()
 
-        val globalIndex = (currentBlock - 1) * trialsPerBlock + (currentTrial - 1)
-        val absoluteIndex = resumeStartIndex + globalIndex
+        val absoluteIndex = resumeStartIndex + (currentTrial - 1)
         progressStore.setLastCompletedIndex(participantId, absoluteIndex)
-        Log.d(TAG, "Saved progress: participant=$participantId absoluteIndex=$absoluteIndex (block=$currentBlock trial=$currentTrial)")
-        // Add 1 second delay before next trial/block
+        Log.d(TAG, "Saved progress: participant=$participantId absoluteIndex=$absoluteIndex trial=$currentTrial")
 
         handler.postDelayed({
-            if (currentTrial < trialsPerBlock) {
+            if (currentTrial < totalTrials) {
                 startNextTrial()
             } else {
-                transitionToState(ExperimentState.BLOCK_END)
+                transitionToState(ExperimentState.EXPERIMENT_END)
             }
-        }, 1000) // 1000ms = 1 second
+        }, 1000)
     }
 
     private fun startMicAnimation() {

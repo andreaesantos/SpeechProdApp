@@ -61,7 +61,7 @@ class AudioRecorder(private val context: Context) {
         participantId: Int,
         runId: String,          // <-- add this
         date: String,           // <-- add this (recommended)
-        blockNumber: Int,
+        blockNumber: Int? = null,
         trialNumber: Int,
         onComplete: (File) -> Unit,
         onError: (String) -> Unit
@@ -100,7 +100,13 @@ class AudioRecorder(private val context: Context) {
 
 
             // Create output file with naming convention
-            val fileName = "block_${blockNumber}_trial_${trialNumber}.wav"
+            val fileName = if (blockNumber == null) {
+                "trial_${trialNumber}.wav"
+            } else {
+                "block_${blockNumber}_trial_${trialNumber}.wav"
+            }
+            outputFile = File(outputDir, fileName)
+            Log.d(TAG, "Output file path: ${outputFile?.absolutePath}")
             outputFile = File(outputDir, fileName)
             Log.d(TAG, "Output file path: ${outputFile?.absolutePath}")
 

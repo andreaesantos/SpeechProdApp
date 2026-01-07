@@ -172,7 +172,7 @@ class EventLogger private constructor(
     /**
      * Log a block event
      */
-    fun logBlockEvent(type: EventType, blockNumber: Int) {
+    fun logBlockEvent(type: EventType, blockNumber: Int?) {
         scope.launch {
             events.add(
                 ExperimentEvent(
@@ -188,7 +188,7 @@ class EventLogger private constructor(
     /**
      * Log a trial event
      */
-    fun logTrialEvent(type: EventType, blockNumber: Int, trialNumber: Int) {
+    fun logTrialEvent(type: EventType, blockNumber: Int?, trialNumber: Int) {
         scope.launch {
             events.add(
                 ExperimentEvent(
@@ -205,7 +205,7 @@ class EventLogger private constructor(
     /**
      * Log a video event
      */
-    fun logVideoEvent(type: EventType, blockNumber: Int, trialNumber: Int, videoName: String) {
+    fun logVideoEvent(type: EventType, blockNumber: Int?, trialNumber: Int, videoName: String) {
         scope.launch {
             events.add(
                 ExperimentEvent(
@@ -225,7 +225,7 @@ class EventLogger private constructor(
      */
     fun logRecordingEvent(
         type: EventType,
-        blockNumber: Int,
+        blockNumber: Int?,
         trialNumber: Int,
         audioFileName: String
     ) {
