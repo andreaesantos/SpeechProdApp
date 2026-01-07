@@ -64,6 +64,7 @@ class ExperimentActivity : BaseExperimentActivity() {
 
     private var runId: String = ""
 
+
     var config: ExperimentConfig.Standard? = null
     var videoQueue: List<String> = emptyList()
     private val videoLoader by lazy { SessionVideoLoader(this) }
@@ -74,6 +75,12 @@ class ExperimentActivity : BaseExperimentActivity() {
         private set
 
     private val handler = Handler(Looper.getMainLooper())
+
+    private var fixationCountdownRunnable: Runnable? = null
+
+    private val updateTimeRunnable = object : Runnable { ... }
+
+
     private val updateTimeRunnable = object : Runnable {
         override fun run() {
             updateTimeDisplay()
@@ -85,6 +92,8 @@ class ExperimentActivity : BaseExperimentActivity() {
     private lateinit var audioRecorder: AudioRecorder
     private var currentRecordingFile: File? = null
     private var permissionsGranted = false
+
+    private var isReloadingTrial = false
 
     // Event logger and serial port helper
     private lateinit var eventLogger: EventLogger
@@ -205,7 +214,7 @@ class ExperimentActivity : BaseExperimentActivity() {
         reloadButton = findViewById(R.id.reloadButton)
 
         reloadButton.setOnClickListener {
-            reloadCurrentVideo()
+            reloadCurrentTrial()
         }
         playerView = findViewById(R.id.playerView)
         experimentContentTextView = findViewById(R.id.experimentContentTextView)
@@ -517,6 +526,54 @@ class ExperimentActivity : BaseExperimentActivity() {
         }
     }
 
+    private fun reloadCurrentTrial() {
+        when (experimentState.value) {
+
+            ExperimentState.TRIAL_VIDEO -> {
+                reloadCurrentVideo()
+            }
+
+            ExperimentState.FIXATION_DELAY -> {
+                fixationCountdownRunnable?.let { handler.removeCallbacks(it) }
+                fixationCountdownRunnable = null
+
+                runOnUiThread {
+                    fixationCrossLayout.visibility = View.GONE
+                    playerView.visibility = View.VISIBLE
+                }
+
+                transitionToState(ExperimentState.TRIAL_VIDEO)
+
+                handler.post {
+                    reloadCurrentVideo()
+                }
+            }
+
+            ExperimentState.SPEECH_RECORDING -> {
+                isReloadingTrial = true
+
+                try { audioRecorder.stopRecording() } catch (_: Exception) {}
+                stopMicAnimation()
+
+                runOnUiThread {
+                    recordingContainer.visibility = View.GONE
+                    playerView.visibility = View.VISIBLE
+                    fixationCrossLayout.visibility = View.GONE
+                }
+
+                transitionToState(ExperimentState.TRIAL_VIDEO)
+
+                handler.post {
+                    reloadCurrentVideo()
+                }
+            }
+
+            else -> {
+                // do nothing
+            }
+        }
+    }
+
 
     /**
      * Update the connection status display
@@ -593,6 +650,7 @@ class ExperimentActivity : BaseExperimentActivity() {
                 fixationCrossLayout.visibility = View.VISIBLE
                 passButton.visibility = View.GONE
                 failButton.visibility = View.GONE
+                reloadButton.visibility = View.VISIBLE
 
             }
             ExperimentState.IDLE -> {
@@ -602,6 +660,7 @@ class ExperimentActivity : BaseExperimentActivity() {
                 experimentContentTextView.text = "Prêt(e) à commencer l’expérience"
                 passButton.visibility = View.GONE
                 failButton.visibility = View.GONE
+                reloadButton.visibility = View.GONE
 
             }
             else -> {
@@ -757,39 +816,37 @@ class ExperimentActivity : BaseExperimentActivity() {
      * @param durationMs Total duration of the fixation period in milliseconds
      */
     private fun startFixationCountdown(durationMs: Long) {
-        val updateIntervalMs = 16L // Update at ~60fps for smooth animation
+        // Cancel any previous fixation countdown if still running
+        fixationCountdownRunnable?.let { handler.removeCallbacks(it) }
+        fixationCountdownRunnable = null
+
+        val updateIntervalMs = 16L
         val totalSteps = durationMs / updateIntervalMs
         var remainingSteps = totalSteps
 
-        // Initial display
         updateCountdownDisplay(durationMs, durationMs)
 
-        // Create a repeating task to update the countdown
         val countdownRunnable = object : Runnable {
             override fun run() {
                 remainingSteps--
                 val remainingMs = remainingSteps * updateIntervalMs
-
-                // Update the display
                 updateCountdownDisplay(remainingMs, durationMs)
 
                 if (remainingSteps > 0) {
-                    // Schedule the next update
                     handler.postDelayed(this, updateIntervalMs)
                 } else {
-                    // Countdown finished: now fixation ends
+                    // Finished
                     eventLogger.logEvent(EventType.FIXATION_END)
                     lifecycleScope.launch(Dispatchers.IO) {
                         serialPortHelper.sendEventTrigger(EventType.FIXATION_END)
                     }
-
+                    fixationCountdownRunnable = null
                     transitionToState(ExperimentState.SPEECH_RECORDING)
                 }
-
             }
         }
 
-        // Start the countdown
+        fixationCountdownRunnable = countdownRunnable
         handler.postDelayed(countdownRunnable, updateIntervalMs)
     }
 
@@ -870,6 +927,12 @@ class ExperimentActivity : BaseExperimentActivity() {
             trialNumber = currentTrial,
             onComplete = { file ->
                 currentRecordingFile = file
+
+                if (isReloadingTrial) {
+                    isReloadingTrial = false
+                    return@startRecording
+                }
+
                 Log.d("ExperimentActivity", "Recording completed successfully: ${file.absolutePath}")
 
                 // Log recording end
