@@ -78,9 +78,6 @@ class ExperimentActivity : BaseExperimentActivity() {
 
     private var fixationCountdownRunnable: Runnable? = null
 
-    private val updateTimeRunnable = object : Runnable { ... }
-
-
     private val updateTimeRunnable = object : Runnable {
         override fun run() {
             updateTimeDisplay()
@@ -285,9 +282,17 @@ class ExperimentActivity : BaseExperimentActivity() {
     }
 
     override fun onDestroy() {
+        // stop periodic UI updates
         handler.removeCallbacks(updateTimeRunnable)
+
+        // stop fixation countdown if it’s running
+        fixationCountdownRunnable?.let { handler.removeCallbacks(it) }
+        fixationCountdownRunnable = null
+
+        // stop audio + usb
         audioRecorder.stopRecording()
         serialPortHelper.cleanup()
+
         super.onDestroy()
     }
 
