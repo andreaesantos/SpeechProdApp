@@ -119,9 +119,15 @@ class ExperimentActivity : BaseExperimentActivity() {
         failButton = findViewById(R.id.failButton)
 
         decisionStore = dev.andrea.perroquet.util.DecisionStore(this) // uses datasetKey default
-        passButton.setOnClickListener { recordDecision("PASS") }
-        failButton.setOnClickListener { recordDecision("FAIL") }
+        passButton.setOnClickListener {
+            recordDecision("PASS")
+            advanceAfterDecision()
+        }
 
+        failButton.setOnClickListener {
+            recordDecision("FAIL")
+            advanceAfterDecision()
+        }
 
         exitButton = findViewById(R.id.exitButton)
 
@@ -883,6 +889,22 @@ class ExperimentActivity : BaseExperimentActivity() {
         decisionStore.setDecision(participantId, videoName, decision)
 
         Toast.makeText(this, "$decision: $videoName", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun advanceAfterDecision() {
+        when (experimentState.value) {
+            ExperimentState.SPEECH_RECORDING -> {
+                // same behavior as Next during recording
+                audioRecorder.stopRecording()
+            }
+            //ExperimentState.TRIAL_VIDEO,
+            //ExperimentState.FIXATION_DELAY -> {
+             //   startNextTrial()
+            //}
+            else -> {
+                // do nothing
+            }
+        }
     }
 
     /**
