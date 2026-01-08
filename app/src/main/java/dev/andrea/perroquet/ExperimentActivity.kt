@@ -64,6 +64,7 @@ class ExperimentActivity : BaseExperimentActivity() {
 
     private var runId: String = ""
 
+    private var mode: String = ParticipantInputActivity.MODE_FULL
 
     var config: ExperimentConfig.Standard? = null
     var videoQueue: List<String> = emptyList()
@@ -110,15 +111,20 @@ class ExperimentActivity : BaseExperimentActivity() {
         }
     }
 
+    private fun isClinical() = (mode == ParticipantInputActivity.MODE_PASSED_ONLY)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_experiment)
-        reloadButton = findViewById(R.id.reloadButton)
-        reloadButton.visibility = View.GONE
+        mode = intent.getStringExtra(ParticipantInputActivity.EXTRA_MODE)
+            ?: ParticipantInputActivity.MODE_FULL
+        //reloadButton = findViewById(R.id.reloadButton)
+        //reloadButton.visibility = View.GONE
         passButton = findViewById(R.id.passButton)
         failButton = findViewById(R.id.failButton)
 
         decisionStore = dev.andrea.perroquet.util.DecisionStore(this) // uses datasetKey default
+
         passButton.setOnClickListener {
             recordDecision("PASS")
             advanceAfterDecision()
@@ -135,6 +141,13 @@ class ExperimentActivity : BaseExperimentActivity() {
             showExitConfirmDialog()
         }
 
+        // Status text views
+        connectionStatusTextView = findViewById(R.id.connectionStatusTextView)
+
+        // Hide battery warning by default, only show if battery is low at start
+        batteryStatusTextView = findViewById(R.id.batteryStatusTextView)
+        batteryStatusTextView.visibility = View.GONE
+        
         // Hide the status bar and make the app full screen
         hideSystemUI()
 
@@ -147,8 +160,6 @@ class ExperimentActivity : BaseExperimentActivity() {
         val runDir = RunStore.getOrCreateRunDir(this, participantId, dateString, runId)
         val logDir = File(runDir, "logs").apply { mkdirs() }
 
-        val mode = intent.getStringExtra(ParticipantInputActivity.EXTRA_MODE)
-            ?: ParticipantInputActivity.MODE_FULL
 
         val allVideos = videoLoader.loadVideosInOrder()
 
@@ -216,6 +227,9 @@ class ExperimentActivity : BaseExperimentActivity() {
         nextButton = findViewById(R.id.nextButton)
         reloadButton = findViewById(R.id.reloadButton)
 
+        startButton.setOnClickListener { handleNextButtonClick() }
+        nextButton.setOnClickListener { handleNextButtonClick() }
+
         reloadButton.setOnClickListener {
             reloadCurrentTrial()
         }
@@ -229,12 +243,7 @@ class ExperimentActivity : BaseExperimentActivity() {
         fixationCrossTextView = fixationCrossLayout.findViewById(R.id.fixationCrossTextView)
         circularCountdownView = fixationCrossLayout.findViewById(R.id.circularCountdownView)
 
-        // Status text views
-        connectionStatusTextView = findViewById(R.id.connectionStatusTextView)
-
-        // Hide battery warning by default, only show if battery is low at start
-        batteryStatusTextView = findViewById(R.id.batteryStatusTextView)
-        batteryStatusTextView.visibility = View.GONE
+        applyModeToButtons()
 
         // Connect player to view and disable controls
         playerView.player = player ?: run {
@@ -270,10 +279,6 @@ class ExperimentActivity : BaseExperimentActivity() {
             if (!connected) {
                 Log.w("ExperimentActivity", "No USB devices found for initial connection")
             }
-        }
-
-        nextButton.setOnClickListener {
-            handleNextButtonClick()
         }
 
         // Start time updates
@@ -523,6 +528,32 @@ class ExperimentActivity : BaseExperimentActivity() {
         }
     }
 
+    private fun applyModeToButtons() {
+        val clinical = isClinical()
+
+        if (clinical) {
+            // Clinical: Next + Exit only
+            startButton.visibility = View.GONE
+            reloadButton.visibility = View.GONE
+            passButton.visibility = View.GONE
+            failButton.visibility = View.GONE
+
+            nextButton.visibility = View.VISIBLE
+            exitButton.visibility = View.VISIBLE
+        } else {
+            // Full experiment: no Next button at all
+            nextButton.visibility = View.GONE
+            exitButton.visibility = View.VISIBLE
+
+            // Keep these managed by updateUI/state
+            reloadButton.visibility = View.GONE
+            passButton.visibility = View.GONE
+            failButton.visibility = View.GONE
+        }
+    }
+
+
+
     private fun reloadCurrentVideo() {
         val p = playerView.player ?: return
 
@@ -635,6 +666,7 @@ class ExperimentActivity : BaseExperimentActivity() {
     }
 
     private fun updateUI(state: ExperimentState) {
+        val clinical = isClinical()
         // Update status text
         statusTextView.text = "Status: ${state.name}"
 
@@ -653,7 +685,8 @@ class ExperimentActivity : BaseExperimentActivity() {
                 passButton.visibility = View.GONE
                 failButton.visibility = View.GONE
 
-                reloadButton.visibility = View.VISIBLE
+                reloadButton.visibility = if (clinical) View.GONE else View.VISIBLE
+
             }
             ExperimentState.FIXATION_DELAY -> {
                 playerView.visibility = View.GONE
@@ -661,7 +694,7 @@ class ExperimentActivity : BaseExperimentActivity() {
                 fixationCrossLayout.visibility = View.VISIBLE
                 passButton.visibility = View.GONE
                 failButton.visibility = View.GONE
-                reloadButton.visibility = View.VISIBLE
+                reloadButton.visibility = if (clinical) View.GONE else View.VISIBLE
 
             }
             ExperimentState.IDLE -> {
@@ -684,8 +717,10 @@ class ExperimentActivity : BaseExperimentActivity() {
                 if (state == ExperimentState.SPEECH_RECORDING) {
                     experimentContentTextView.visibility = View.GONE
                     recordingContainer.visibility = View.VISIBLE
-                    passButton.visibility = View.VISIBLE
-                    failButton.visibility = View.VISIBLE
+
+                    passButton.visibility = if (clinical) View.GONE else View.VISIBLE
+                    failButton.visibility = if (clinical) View.GONE else View.VISIBLE
+
                     startMicAnimation()
                 } else {
                     experimentContentTextView.visibility = View.VISIBLE
@@ -702,28 +737,57 @@ class ExperimentActivity : BaseExperimentActivity() {
         }
 
         // Update button visibility and state
+
         when (state) {
             ExperimentState.IDLE -> {
-                nextButton.visibility = View.VISIBLE
-                nextButton.isEnabled = true
-                nextButton.text = "Démarrer"
+                if (clinical) {
+                    nextButton.visibility = View.VISIBLE
+                    nextButton.isEnabled = true
+                    nextButton.text = "Démarrer"
+
+                    startButton.visibility = View.GONE
+                } else {
+                    // Full experiment starts with Start button
+                    startButton.visibility = View.VISIBLE
+                    startButton.isEnabled = true
+                    startButton.text = "Démarrer"
+
+                    nextButton.visibility = View.GONE
+                }
             }
 
             ExperimentState.EXPERIMENT_END -> {
-                nextButton.visibility = View.VISIBLE
-                nextButton.isEnabled = true
-                nextButton.text = "Terminer"
+                if (clinical) {
+                    nextButton.visibility = View.VISIBLE
+                    nextButton.isEnabled = true
+                    nextButton.text = "Terminer"
+
+                    startButton.visibility = View.GONE
+                } else {
+                    // Full experiment ends with Start button (rename it if you want)
+                    startButton.visibility = View.VISIBLE
+                    startButton.isEnabled = true
+                    startButton.text = "Terminer"
+
+                    nextButton.visibility = View.GONE
+                }
             }
 
             ExperimentState.SPEECH_RECORDING -> {
-                nextButton.visibility = View.VISIBLE
-                nextButton.isEnabled = true
-                nextButton.text = "Suivant"
+                if (clinical) {
+                    nextButton.visibility = View.VISIBLE
+                    nextButton.isEnabled = true
+                    nextButton.text = "Suivant"
+                } else {
+                    nextButton.visibility = View.GONE
+                }
+                startButton.visibility = View.GONE
             }
 
             else -> {
-                // Hide the button during experiment trials
+                // Hide during trial/fixation/etc.
                 nextButton.visibility = View.GONE
+                startButton.visibility = View.GONE
             }
         }
     }
