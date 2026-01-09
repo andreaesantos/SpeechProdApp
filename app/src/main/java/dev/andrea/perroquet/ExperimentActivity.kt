@@ -5,6 +5,7 @@ import android.app.AlertDialog
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.graphics.Color
 import android.os.BatteryManager
 import android.os.Bundle
 import android.os.Handler
@@ -50,8 +51,8 @@ class ExperimentActivity : BaseExperimentActivity() {
     private lateinit var exitButton: Button
     private lateinit var playerView: PlayerView
     private lateinit var experimentContentTextView: TextView
-    private lateinit var microphoneImageView: ImageView
     private lateinit var recordingContainer: View
+
     private lateinit var recordingCountdownView: CircularCountdownView
     private lateinit var fixationCrossLayout: View
     private lateinit var fixationCrossTextView: TextView
@@ -236,7 +237,6 @@ class ExperimentActivity : BaseExperimentActivity() {
         playerView = findViewById(R.id.playerView)
         experimentContentTextView = findViewById(R.id.experimentContentTextView)
         recordingContainer = findViewById(R.id.recordingContainer)
-        microphoneImageView = findViewById(R.id.microphoneImageView)
 
         // Initialize fixation cross views
         fixationCrossLayout = findViewById(R.id.fixationCrossLayout)
@@ -595,10 +595,9 @@ class ExperimentActivity : BaseExperimentActivity() {
                 isReloadingTrial = true
 
                 try { audioRecorder.stopRecording() } catch (_: Exception) {}
-                stopMicAnimation()
 
                 runOnUiThread {
-                    recordingContainer.visibility = View.GONE
+                    recordingContainer.visibility = View.VISIBLE
                     playerView.visibility = View.VISIBLE
                     fixationCrossLayout.visibility = View.GONE
                 }
@@ -721,10 +720,8 @@ class ExperimentActivity : BaseExperimentActivity() {
                     passButton.visibility = if (clinical) View.GONE else View.VISIBLE
                     failButton.visibility = if (clinical) View.GONE else View.VISIBLE
 
-                    startMicAnimation()
                 } else {
                     experimentContentTextView.visibility = View.VISIBLE
-                    recordingContainer.visibility = View.GONE
 
                     // Update content text based on state
                     experimentContentTextView.text = when (state) {
@@ -1070,7 +1067,6 @@ class ExperimentActivity : BaseExperimentActivity() {
      * Handle completion of recording
      */
     private fun handleRecordingComplete() {
-        stopMicAnimation()
 
         val absoluteIndex = resumeStartIndex + (currentTrial - 1)
         progressStore.setLastCompletedIndex(participantId, absoluteIndex)
@@ -1083,28 +1079,5 @@ class ExperimentActivity : BaseExperimentActivity() {
                 transitionToState(ExperimentState.EXPERIMENT_END)
             }
         }, 1000)
-    }
-
-    private fun startMicAnimation() {
-        microphoneImageView.animate()
-            .alpha(0.5f)
-            .setDuration(500)
-            .withEndAction {
-                microphoneImageView.animate()
-                    .alpha(1.0f)
-                    .setDuration(500)
-                    .withEndAction {
-                        if (experimentState.value == ExperimentState.SPEECH_RECORDING) {
-                            startMicAnimation() // Loop if still recording
-                        }
-                    }
-                    .start()
-            }
-            .start()
-    }
-
-    private fun stopMicAnimation() {
-        microphoneImageView.animate().cancel()
-        microphoneImageView.alpha = 1.0f
     }
 }

@@ -29,6 +29,7 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.saveable.rememberSaveable
 
 
 class ParticipantInputActivity : ComponentActivity() {
@@ -41,17 +42,24 @@ class ParticipantInputActivity : ComponentActivity() {
 
         const val MODE_FULL = "FULL"
         const val MODE_PASSED_ONLY = "PASSED_ONLY"
+        private const val PREFS_NAME = "perroquet_prefs"
+        private const val KEY_LAST_PARTICIPANT_ID = "last_participant_id"
+    }
+
+    private fun loadLastParticipantId(): Int? {
+        val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+        return if (prefs.contains(KEY_LAST_PARTICIPANT_ID)) prefs.getInt(KEY_LAST_PARTICIPANT_ID, -1) else null
+    }
+
+    private fun saveLastParticipantId(id: Int) {
+        getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+            .edit()
+            .putInt(KEY_LAST_PARTICIPANT_ID, id)
+            .apply()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        // TODO: Replace this with your real "passed videos" store.
-        // For now, this returns 0 so the Passed-only button will be disabled.
-        fun getPassedCount(participantId: Int): Int {
-            // e.g., DecisionStore(...).getPassedCount(participantId)
-            return 0
-        }
 
         setContent {
             MyApplicationTheme {
@@ -62,20 +70,23 @@ class ParticipantInputActivity : ComponentActivity() {
                     var step by remember { mutableStateOf(1) }
                     var participantId by remember { mutableStateOf<Int?>(null) }
 
+                    val lastPid = remember { loadLastParticipantId() }
+
                     if (step == 1) {
                         ParticipantIdScreen(
+                            initialParticipantId = lastPid,
                             onNext = { pid ->
+                                saveLastParticipantId(pid)
+
                                 participantId = pid
                                 step = 2
                             }
                         )
                     } else {
                         val pid = participantId ?: -1
-                        val passedCount = remember(pid) { getPassedCount(pid) }
 
                         ModePickerScreen(
                             participantId = pid,
-                            passedCount = passedCount,
                             onBack = { step = 1 },
                             onPickMode = { mode ->
                                 val date = LocalDate.now().toString()
@@ -118,9 +129,17 @@ class ParticipantInputActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ParticipantIdScreen(
+    initialParticipantId: Int?,
     onNext: (Int) -> Unit
 ) {
-    var participantIdText by remember { mutableStateOf("") }
+
+    var participantIdText by rememberSaveable { mutableStateOf("") }
+
+    LaunchedEffect(initialParticipantId) {
+        if (participantIdText.isBlank()) {
+            participantIdText = initialParticipantId?.takeIf { it > 0 }?.toString() ?: ""
+        }
+    }
     var participantError by remember { mutableStateOf(false) }
 
     Column(
@@ -166,15 +185,16 @@ private fun ParticipantIdScreen(
 @Composable
 private fun ModePickerScreen(
     participantId: Int,
-    passedCount: Int,
     onBack: () -> Unit,
     onPickMode: (String) -> Unit
 ) {
-
     val context = LocalContext.current
-    val passedCount = DecisionStore(context).getPassedCount(participantId)
-    val passedEnabled = passedCount > 0
 
+    // Compute once per participantId (not every recomposition)
+    val passedCount = remember(participantId) {
+        DecisionStore(context).getPassedCount(participantId)
+    }
+    val passedEnabled = passedCount > 0
 
     Column(
         modifier = Modifier.fillMaxSize().padding(16.dp),
@@ -187,7 +207,6 @@ private fun ModePickerScreen(
             modifier = Modifier.padding(bottom = 24.dp)
         )
 
-        // Full experiment
         Button(
             onClick = { onPickMode(ParticipantInputActivity.MODE_FULL) },
             modifier = Modifier.fillMaxWidth().height(70.dp)
@@ -203,7 +222,6 @@ private fun ModePickerScreen(
 
         Spacer(Modifier.height(12.dp))
 
-        // Passed-only
         Button(
             onClick = { onPickMode(ParticipantInputActivity.MODE_PASSED_ONLY) },
             enabled = passedEnabled,
