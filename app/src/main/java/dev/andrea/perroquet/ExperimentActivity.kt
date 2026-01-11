@@ -67,6 +67,9 @@ class ExperimentActivity : BaseExperimentActivity() {
 
     private var mode: String = ParticipantInputActivity.MODE_FULL
 
+    private var recordingBgRunnable: Runnable? = null
+    private val RECORDING_BLACK_MS = 8_000L
+
     var config: ExperimentConfig.Standard? = null
     var videoQueue: List<String> = emptyList()
     private val videoLoader by lazy { SessionVideoLoader(this) }
@@ -296,6 +299,9 @@ class ExperimentActivity : BaseExperimentActivity() {
         // stop periodic UI updates
         handler.removeCallbacks(updateTimeRunnable)
 
+        recordingBgRunnable?.let { handler.removeCallbacks(it) }
+        recordingBgRunnable = null
+
         // stop fixation countdown if it’s running
         fixationCountdownRunnable?.let { handler.removeCallbacks(it) }
         fixationCountdownRunnable = null
@@ -476,7 +482,28 @@ class ExperimentActivity : BaseExperimentActivity() {
             }
 
             ExperimentState.SPEECH_RECORDING -> {
-                // Start audio recording
+
+                // 1) Show recording overlay + set black immediately
+                runOnUiThread {
+                    recordingContainer.visibility = View.VISIBLE
+                    recordingContainer.setBackgroundColor(Color.BLACK)
+                }
+
+                // 2) Cancel any previous scheduled flip
+                recordingBgRunnable?.let { handler.removeCallbacks(it) }
+                recordingBgRunnable = null
+
+                // 3) Schedule flip to white after 8 seconds
+                val r = Runnable {
+                    // Only flip if we're still recording (prevents weird flips after leaving state)
+                    if (experimentState.value == ExperimentState.SPEECH_RECORDING) {
+                        recordingContainer.setBackgroundColor(Color.WHITE)
+                    }
+                }
+                recordingBgRunnable = r
+                handler.postDelayed(r, RECORDING_BLACK_MS)
+
+                // 4) Start audio recording
                 startAudioRecording()
             }
 
@@ -596,10 +623,15 @@ class ExperimentActivity : BaseExperimentActivity() {
 
                 try { audioRecorder.stopRecording() } catch (_: Exception) {}
 
+                recordingBgRunnable?.let { handler.removeCallbacks(it) }
+                recordingBgRunnable = null
+
                 runOnUiThread {
-                    recordingContainer.visibility = View.VISIBLE
-                    playerView.visibility = View.VISIBLE
+                    // Hide recording overlay when reloading
+                    recordingContainer.visibility = View.GONE
+
                     fixationCrossLayout.visibility = View.GONE
+                    playerView.visibility = View.VISIBLE
                 }
 
                 transitionToState(ExperimentState.TRIAL_VIDEO)
@@ -608,7 +640,6 @@ class ExperimentActivity : BaseExperimentActivity() {
                     reloadCurrentVideo()
                 }
             }
-
             else -> {
                 // do nothing
             }
@@ -666,6 +697,7 @@ class ExperimentActivity : BaseExperimentActivity() {
 
     private fun updateUI(state: ExperimentState) {
         val clinical = isClinical()
+
         // Update status text
         statusTextView.text = "Status: ${state.name}"
 
@@ -675,80 +707,80 @@ class ExperimentActivity : BaseExperimentActivity() {
         exitButton.visibility = View.VISIBLE
         exitButton.bringToFront()
 
+        // hide overlays everytime updateUI is gone
+        playerView.visibility = View.GONE
+        fixationCrossLayout.visibility = View.GONE
+        experimentContentTextView.visibility = View.GONE
+        recordingContainer.visibility = View.GONE
+
+        // hide decision buttons
+        passButton.visibility = View.GONE
+        failButton.visibility = View.GONE
+
+        // depends on state (below)
+        reloadButton.visibility = View.GONE
+
         // Update experiment content visibility
         when (state) {
             ExperimentState.TRIAL_VIDEO -> {
                 playerView.visibility = View.VISIBLE
-                experimentContentTextView.visibility = View.GONE
-                fixationCrossLayout.visibility = View.GONE
-                passButton.visibility = View.GONE
-                failButton.visibility = View.GONE
-
                 reloadButton.visibility = if (clinical) View.GONE else View.VISIBLE
-
             }
+
             ExperimentState.FIXATION_DELAY -> {
-                playerView.visibility = View.GONE
-                experimentContentTextView.visibility = View.GONE
                 fixationCrossLayout.visibility = View.VISIBLE
-                passButton.visibility = View.GONE
-                failButton.visibility = View.GONE
                 reloadButton.visibility = if (clinical) View.GONE else View.VISIBLE
-
             }
+
             ExperimentState.IDLE -> {
-                playerView.visibility = View.GONE
                 experimentContentTextView.visibility = View.VISIBLE
-                fixationCrossLayout.visibility = View.GONE
                 experimentContentTextView.text = "Prêt(e) à commencer l’expérience"
-                passButton.visibility = View.GONE
-                failButton.visibility = View.GONE
                 reloadButton.visibility = View.GONE
-
             }
+
+            ExperimentState.SPEECH_RECORDING -> {
+                //  black->white timing is handled in onStateChanged(SPEECH_RECORDING).
+                recordingContainer.visibility = View.VISIBLE
+
+                passButton.visibility = if (clinical) View.GONE else View.VISIBLE
+                failButton.visibility = if (clinical) View.GONE else View.VISIBLE
+
+                // Optional: allow reload during recording in full mode
+                reloadButton.visibility = if (clinical) View.GONE else View.VISIBLE
+            }
+
+            ExperimentState.EXPERIMENT_END -> {
+                experimentContentTextView.visibility = View.VISIBLE
+                experimentContentTextView.text =
+                    "Expérience terminée\n\nMerci de votre participation"
+                reloadButton.visibility = View.GONE
+            }
+
             else -> {
-                playerView.visibility = View.GONE
-                fixationCrossLayout.visibility = View.GONE
-                passButton.visibility = View.GONE
-                failButton.visibility = View.GONE
-
-                // Handle special case for speech recording
-                if (state == ExperimentState.SPEECH_RECORDING) {
-                    experimentContentTextView.visibility = View.GONE
-                    recordingContainer.visibility = View.VISIBLE
-
-                    passButton.visibility = if (clinical) View.GONE else View.VISIBLE
-                    failButton.visibility = if (clinical) View.GONE else View.VISIBLE
-
-                } else {
-                    experimentContentTextView.visibility = View.VISIBLE
-
-                    // Update content text based on state
-                    experimentContentTextView.text = when (state) {
-                        ExperimentState.EXPERIMENT_END -> "Expérience terminée\n\nMerci de votre participation"
-                        else -> "Experiment Content Area"
-                    }
-                }
+                experimentContentTextView.visibility = View.VISIBLE
+                experimentContentTextView.text = "Experiment Content Area"
             }
-
         }
 
-        // Update button visibility and state
+        // cancel black-white flip if not recording
+
+        if (state != ExperimentState.SPEECH_RECORDING) {
+            recordingBgRunnable?.let { handler.removeCallbacks(it) }
+            recordingBgRunnable = null
+        }
 
         when (state) {
+
             ExperimentState.IDLE -> {
                 if (clinical) {
                     nextButton.visibility = View.VISIBLE
                     nextButton.isEnabled = true
                     nextButton.text = "Démarrer"
-
                     startButton.visibility = View.GONE
                 } else {
-                    // Full experiment starts with Start button
                     startButton.visibility = View.VISIBLE
                     startButton.isEnabled = true
                     startButton.text = "Démarrer"
-
                     nextButton.visibility = View.GONE
                 }
             }
@@ -758,14 +790,11 @@ class ExperimentActivity : BaseExperimentActivity() {
                     nextButton.visibility = View.VISIBLE
                     nextButton.isEnabled = true
                     nextButton.text = "Terminer"
-
                     startButton.visibility = View.GONE
                 } else {
-                    // Full experiment ends with Start button (rename it if you want)
                     startButton.visibility = View.VISIBLE
                     startButton.isEnabled = true
                     startButton.text = "Terminer"
-
                     nextButton.visibility = View.GONE
                 }
             }
@@ -782,7 +811,6 @@ class ExperimentActivity : BaseExperimentActivity() {
             }
 
             else -> {
-                // Hide during trial/fixation/etc.
                 nextButton.visibility = View.GONE
                 startButton.visibility = View.GONE
             }
@@ -1067,6 +1095,9 @@ class ExperimentActivity : BaseExperimentActivity() {
      * Handle completion of recording
      */
     private fun handleRecordingComplete() {
+
+        recordingBgRunnable?.let { handler.removeCallbacks(it) }
+        recordingBgRunnable = null
 
         val absoluteIndex = resumeStartIndex + (currentTrial - 1)
         progressStore.setLastCompletedIndex(participantId, absoluteIndex)
