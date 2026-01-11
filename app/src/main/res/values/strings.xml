@@ -1,25 +1,50 @@
 <resources>
     <string name="app_name">Perroquet</string>
-    <string name="instruction_demo_description">Instruction demo showing the experiment interface</string>
+    <string name="instruction_demo_description">Démo d’instructions montrant l’interface de l’expérience</string>
 
-    <!-- Debug/status labels -->
-    <string name="status_idle">Status: IDLE</string>
-    <string name="block_initial">Block: 0 / 0</string>
-    <string name="trial_initial">Trial: 0 / 0</string>
-    <string name="time_initial">Time: 00:00.000</string>
+    <!-- Debug/status labels (si tu les affiches) -->
+    <string name="status_idle">Statut : EN ATTENTE</string>
+    <string name="block_initial">Bloc : 0 / 0</string>
+    <string name="trial_initial">Essai : 0 / 0</string>
+    <string name="time_initial">Temps : 00:00.000</string>
 
-    <!-- Connection / battery -->
-    <string name="usb_disconnected">USB: Disconnected</string>
-    <string name="battery_warning">Battery Warning</string>
+    <!-- Permissions / erreurs -->
+    <string name="permission_audio_granted">Autorisation du micro accordée</string>
+    <string name="permission_audio_denied">Autorisation du micro refusée</string>
+    <string name="no_videos_valides">Aucune vidéo validée pour le moment</string>
+    <string name="impossible_recharger_video">Impossible de recharger la vidéo</string>
+    <string name="impossible_enregistrer_micro_refuse">Impossible d’enregistrer : autorisation micro refusée</string>
+
+    <!-- UI labels -->
+    <string name="statut_format">Statut : %1$s</string>
+    <string name="essai_format">Essai : %1$d / %2$d</string>
+    <string name="essais_restants_format">Essais restants : %1$d</string>
+    <string name="zone_contenu_experience">Zone de contenu de l’expérience</string>
+
+    <!-- Connexion / batterie -->
+    <string name="usb_disconnected">USB : déconnecté</string>
+    <string name="battery_warning">Avertissement batterie</string>
 
     <!-- Main content -->
-    <string name="experiment_content_area">Experiment Content Area</string>
+    <string name="experiment_content_area">Zone de contenu de l’expérience</string>
+    <string name="aucune_video_restante">Aucune vidéo restante à exécuter</string>
+    <string name="pret_a_commencer">Prêt(e) à commencer l’expérience</string>
+    <string name="experience_terminee">Expérience terminée\n\nMerci de votre participation</string>
+
 
     <!-- Buttons -->
-    <string name="start_experiment">Start Experiment</string>
-    <string name="suivant">Next</string>
-    <string name="recharger">Reload</string>
-    <string name="pass">Pass</string>
-    <string name="fail">Fail</string>
-    <string name="sortir">Exit</string>
+    <string name="start_experiment">Démarrer</string>
+    <string name="suivant">Suivant</string>
+    <string name="recharger">Recharger</string>
+    <string name="pass">Valider</string>
+    <string name="fail">Échouer</string>
+    <string name="sortir">Quitter</string>
+    <string name="termine">Terminé</string>
+    <string name="demarrer">Démarrer</string>
+    <string name="terminer">Terminer</string>
+
+
+    <!-- Dialog buttons -->
+    <string name="continuer">Continuer</string>
+    <string name="terminer_experience">Terminer l’expérience</string>
 </resources>

@@ -111,9 +111,9 @@ class ExperimentActivity : BaseExperimentActivity() {
         permissionsGranted = allGranted
 
         if (allGranted) {
-            Toast.makeText(this, "Audio recording permission granted", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.permission_audio_granted), Toast.LENGTH_SHORT).show()
         } else {
-            Toast.makeText(this, "Audio recording permission denied", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, getString(R.string.permission_audio_denied), Toast.LENGTH_LONG).show()
         }
     }
 
@@ -179,7 +179,7 @@ class ExperimentActivity : BaseExperimentActivity() {
         }
 
         if (mode == ParticipantInputActivity.MODE_PASSED_ONLY && videoQueue.isEmpty()) {
-            Toast.makeText(this, "No passed videos yet", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, getString(R.string.no_videos_valides), Toast.LENGTH_LONG).show()
             finish()
             return
         }
@@ -193,8 +193,14 @@ class ExperimentActivity : BaseExperimentActivity() {
 
         // Read progress and compute where to resume (next trial)
         val lastCompleted = progressStore.getLastCompletedIndex(participantId) // -1 if none
-        resumeStartIndex = (lastCompleted + 1).coerceAtLeast(0)
-
+        resumeStartIndex = if (mode == ParticipantInputActivity.MODE_RESTART) {
+            // Optional but recommended: wipe saved progress so restart is truly from the beginning
+            progressStore.setLastCompletedIndex(participantId, -1)
+            0
+        } else {
+            (lastCompleted + 1).coerceAtLeast(0)
+        }
+        Log.d("ExperimentActivity", "Mode=$mode lastCompleted=$lastCompleted resumeStartIndex=$resumeStartIndex")
         if (resumeStartIndex >= videoQueue.size) {
             Log.d(TAG, "Participant already completed all videos. lastCompleted=$lastCompleted")
             resumeStartIndex = 0
@@ -203,7 +209,7 @@ class ExperimentActivity : BaseExperimentActivity() {
         // NEW: compute remaining trials based on resume point
         val remaining = videoQueue.size - resumeStartIndex
         if (remaining <= 0) {
-            Toast.makeText(this, "No videos remaining to run", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, getString(R.string.aucune_video_restante), Toast.LENGTH_LONG).show()
             finish()
             return
         }
@@ -523,7 +529,7 @@ class ExperimentActivity : BaseExperimentActivity() {
                 progressStore.setLastCompletedIndex(participantId, -1)
 
                 nextButton.isEnabled = false
-                nextButton.text = "Done"
+                nextButton.text = getString(R.string.termine)
             }
 
             else -> { /* No action needed */ }
@@ -595,7 +601,7 @@ class ExperimentActivity : BaseExperimentActivity() {
             Log.d(TAG, "Reloaded current video (seekTo 0)")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to reload current video: ${e.message}", e)
-            Toast.makeText(this, "Could not reload video", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.impossible_recharger_video), Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -703,10 +709,11 @@ class ExperimentActivity : BaseExperimentActivity() {
         val clinical = isClinical()
 
         // Update status text
-        statusTextView.text = "Status: ${state.name}"
+        statusTextView.text = getString(R.string.statut_format, state.name)
 
         // Update trial counters
-        trialTextView.text = "Trial: $currentTrial / $totalTrials"
+        trialTextView.text = getString(R.string.essai_format, currentTrial, totalTrials)
+
 
         exitButton.visibility = View.VISIBLE
         exitButton.bringToFront()
@@ -731,7 +738,7 @@ class ExperimentActivity : BaseExperimentActivity() {
             ExperimentState.TRIAL_VIDEO -> {
                 playerView.visibility = View.VISIBLE
                 trialsLeftTextView.visibility = View.VISIBLE
-                trialsLeftTextView.text = "Remaining: $trialsLeft"
+                trialsLeftTextView.text = getString(R.string.essais_restants_format, trialsLeft)
                 trialsLeftTextView.bringToFront()
                 exitButton.bringToFront()
                 reloadButton.visibility = if (clinical) View.GONE else View.VISIBLE
@@ -744,7 +751,7 @@ class ExperimentActivity : BaseExperimentActivity() {
 
             ExperimentState.IDLE -> {
                 experimentContentTextView.visibility = View.VISIBLE
-                experimentContentTextView.text = "Prêt(e) à commencer l’expérience"
+                experimentContentTextView.text = getString(R.string.pret_a_commencer)
                 reloadButton.visibility = View.GONE
             }
 
@@ -761,14 +768,13 @@ class ExperimentActivity : BaseExperimentActivity() {
 
             ExperimentState.EXPERIMENT_END -> {
                 experimentContentTextView.visibility = View.VISIBLE
-                experimentContentTextView.text =
-                    "Expérience terminée\n\nMerci de votre participation"
+                experimentContentTextView.text = getString(R.string.experience_terminee)
                 reloadButton.visibility = View.GONE
             }
 
             else -> {
                 experimentContentTextView.visibility = View.VISIBLE
-                experimentContentTextView.text = "Experiment Content Area"
+                experimentContentTextView.text = getString(R.string.zone_contenu_experience)
                 trialsLeftTextView.visibility = View.GONE
             }
         }
@@ -786,12 +792,12 @@ class ExperimentActivity : BaseExperimentActivity() {
                 if (clinical) {
                     nextButton.visibility = View.VISIBLE
                     nextButton.isEnabled = true
-                    nextButton.text = "Démarrer"
+                    nextButton.text = getString(R.string.demarrer)
                     startButton.visibility = View.GONE
                 } else {
                     startButton.visibility = View.VISIBLE
                     startButton.isEnabled = true
-                    startButton.text = "Démarrer"
+                    startButton.text = getString(R.string.demarrer)
                     nextButton.visibility = View.GONE
                 }
             }
@@ -800,12 +806,12 @@ class ExperimentActivity : BaseExperimentActivity() {
                 if (clinical) {
                     nextButton.visibility = View.VISIBLE
                     nextButton.isEnabled = true
-                    nextButton.text = "Terminer"
+                    nextButton.text = getString(R.string.terminer)
                     startButton.visibility = View.GONE
                 } else {
                     startButton.visibility = View.VISIBLE
                     startButton.isEnabled = true
-                    startButton.text = "Terminer"
+                    startButton.text = getString(R.string.terminer)
                     nextButton.visibility = View.GONE
                 }
             }
@@ -814,7 +820,7 @@ class ExperimentActivity : BaseExperimentActivity() {
                 if (clinical) {
                     nextButton.visibility = View.VISIBLE
                     nextButton.isEnabled = true
-                    nextButton.text = "Suivant"
+                    nextButton.text = getString(R.string.suivant)
                 } else {
                     nextButton.visibility = View.GONE
                 }
@@ -845,7 +851,7 @@ class ExperimentActivity : BaseExperimentActivity() {
                     .setTitle(title)
                     .setMessage(message)
                     .setCancelable(false)
-                    .setPositiveButton("Continue") { _, _ ->
+                    .setPositiveButton(getString(R.string.continuer)) { _, _ ->
                         // Reset error count and continue
                         errorCount = 0
                         recoveryAttempted = true
@@ -862,7 +868,7 @@ class ExperimentActivity : BaseExperimentActivity() {
                             transitionToState(ExperimentState.EXPERIMENT_END)
                         }
                     }
-                    .setNegativeButton("End Experiment") { _, _ ->
+                    .setNegativeButton(getString(R.string.terminer_experience)) { _, _ ->
                         // Log experiment abort
                         eventLogger.logEvent(
                             EventType.EXPERIMENT_ABORTED,
@@ -1019,11 +1025,7 @@ class ExperimentActivity : BaseExperimentActivity() {
 
         if (!micPermission) {
             Log.e("ExperimentActivity", "Microphone permission is not granted at runtime check")
-            Toast.makeText(
-                this,
-                "Cannot record audio: microphone permission not granted",
-                Toast.LENGTH_LONG
-            ).show()
+            Toast.makeText(this, getString(R.string.impossible_enregistrer_micro_refuse), Toast.LENGTH_LONG).show()
 
             // Log permission error
             eventLogger.logError("Microphone permission denied during recording")

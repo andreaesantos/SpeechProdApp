@@ -41,6 +41,8 @@ class ParticipantInputActivity : ComponentActivity() {
         const val EXTRA_MODE = "MODE"
 
         const val MODE_FULL = "FULL"
+
+        const val MODE_RESTART = "RESTART"        // Restart from first video trial
         const val MODE_PASSED_ONLY = "PASSED_ONLY"
         private const val PREFS_NAME = "perroquet_prefs"
         private const val KEY_LAST_PARTICIPANT_ID = "last_participant_id"
@@ -159,11 +161,11 @@ private fun ParticipantIdScreen(
                 participantIdText = it
                 participantError = false
             },
-            label = { Text("Participant ID") },
+            label = { Text("Identifiant du participant") },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             isError = participantError,
             supportingText = {
-                if (participantError) Text("Participant ID must be a positive number")
+                if (participantError) Text("L’ID du participant doit être un nombre positif")
             },
             modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
         )
@@ -177,7 +179,7 @@ private fun ParticipantIdScreen(
             },
             modifier = Modifier.fillMaxWidth().height(50.dp)
         ) {
-            Text("Next")
+            Text("Suivant")
         }
     }
 }
@@ -190,7 +192,6 @@ private fun ModePickerScreen(
 ) {
     val context = LocalContext.current
 
-    // Compute once per participantId (not every recomposition)
     val passedCount = remember(participantId) {
         DecisionStore(context).getPassedCount(participantId)
     }
@@ -207,14 +208,15 @@ private fun ModePickerScreen(
             modifier = Modifier.padding(bottom = 24.dp)
         )
 
+        // 1) CONTINUER
         Button(
             onClick = { onPickMode(ParticipantInputActivity.MODE_FULL) },
             modifier = Modifier.fillMaxWidth().height(70.dp)
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("Continue full experiment")
+                Text("Continuer l’expérience")
                 Text(
-                    text = "Resume from where you left off",
+                    text = "Reprendre là où vous vous êtes arrêté(e)",
                     style = MaterialTheme.typography.bodySmall
                 )
             }
@@ -222,18 +224,35 @@ private fun ModePickerScreen(
 
         Spacer(Modifier.height(12.dp))
 
+        // 2) RECOMMENCER
+        Button(
+            onClick = { onPickMode(ParticipantInputActivity.MODE_RESTART) },
+            modifier = Modifier.fillMaxWidth().height(70.dp)
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("Recommencer")
+                Text(
+                    text = "Repartir depuis le début",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        // 3) STIMULATIONS CLINIQUES
         Button(
             onClick = { onPickMode(ParticipantInputActivity.MODE_PASSED_ONLY) },
             enabled = passedEnabled,
             modifier = Modifier.fillMaxWidth().height(70.dp)
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("Clinical Stimulations")
+                Text("Stimulations cliniques")
                 Text(
                     text = if (passedEnabled) {
-                        "Only videos you marked PASS ($passedCount)"
+                        "Uniquement les vidéos validées ($passedCount)"
                     } else {
-                        "No passed videos yet"
+                        "Aucune vidéo validée pour le moment"
                     },
                     style = MaterialTheme.typography.bodySmall
                 )
@@ -246,7 +265,7 @@ private fun ModePickerScreen(
             onClick = onBack,
             modifier = Modifier.fillMaxWidth().height(50.dp)
         ) {
-            Text("Back")
+            Text("Retour")
         }
     }
 }
