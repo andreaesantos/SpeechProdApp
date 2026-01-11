@@ -60,6 +60,8 @@ class ExperimentActivity : BaseExperimentActivity() {
     private lateinit var connectionStatusTextView: TextView
     private lateinit var batteryStatusTextView: TextView
 
+    private lateinit var trialsLeftTextView: TextView
+
     private var participantId: Int = -1
     private var dateString: String = ""
 
@@ -151,7 +153,9 @@ class ExperimentActivity : BaseExperimentActivity() {
         // Hide battery warning by default, only show if battery is low at start
         batteryStatusTextView = findViewById(R.id.batteryStatusTextView)
         batteryStatusTextView.visibility = View.GONE
-        
+
+        trialsLeftTextView = findViewById(R.id.trialsLeftTextView)
+
         // Hide the status bar and make the app full screen
         hideSystemUI()
 
@@ -720,10 +724,16 @@ class ExperimentActivity : BaseExperimentActivity() {
         // depends on state (below)
         reloadButton.visibility = View.GONE
 
+        val trialsLeft = (totalTrials - currentTrial + 1).coerceAtLeast(0)
+
         // Update experiment content visibility
         when (state) {
             ExperimentState.TRIAL_VIDEO -> {
                 playerView.visibility = View.VISIBLE
+                trialsLeftTextView.visibility = View.VISIBLE
+                trialsLeftTextView.text = "Remaining: $trialsLeft"
+                trialsLeftTextView.bringToFront()
+                exitButton.bringToFront()
                 reloadButton.visibility = if (clinical) View.GONE else View.VISIBLE
             }
 
@@ -759,6 +769,7 @@ class ExperimentActivity : BaseExperimentActivity() {
             else -> {
                 experimentContentTextView.visibility = View.VISIBLE
                 experimentContentTextView.text = "Experiment Content Area"
+                trialsLeftTextView.visibility = View.GONE
             }
         }
 
