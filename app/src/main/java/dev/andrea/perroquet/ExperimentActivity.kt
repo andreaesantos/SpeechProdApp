@@ -124,6 +124,7 @@ class ExperimentActivity : BaseExperimentActivity() {
         setContentView(R.layout.activity_experiment)
         mode = intent.getStringExtra(ParticipantInputActivity.EXTRA_MODE)
             ?: ParticipantInputActivity.MODE_FULL
+
         //reloadButton = findViewById(R.id.reloadButton)
         //reloadButton.visibility = View.GONE
         passButton = findViewById(R.id.passButton)
@@ -164,6 +165,18 @@ class ExperimentActivity : BaseExperimentActivity() {
         dateString = intent.getStringExtra(ParticipantInputActivity.EXTRA_DATE) ?: LocalDate.now().toString()
         runId = intent.getStringExtra(ParticipantInputActivity.EXTRA_RUN_ID) ?: java.util.UUID.randomUUID().toString()
 
+        if (mode == ParticipantInputActivity.MODE_RESTART) {
+            val lastCompleted = progressStore.getLastCompletedIndex(participantId)
+            if (lastCompleted < 0) {
+                Toast.makeText(
+                    this,
+                    "Impossible de recommencer : aucune session n’a encore été commencée.",
+                    Toast.LENGTH_LONG
+                ).show()
+                finish()
+                return
+            }
+        }
 
         val runDir = RunStore.getOrCreateRunDir(this, participantId, dateString, runId)
         val logDir = File(runDir, "logs").apply { mkdirs() }
@@ -192,12 +205,14 @@ class ExperimentActivity : BaseExperimentActivity() {
         )
 
         // Read progress and compute where to resume (next trial)
-        val lastCompleted = progressStore.getLastCompletedIndex(participantId) // -1 if none
+        val lastCompleted = progressStore.getLastCompletedIndex(participantId)
+
         resumeStartIndex = if (mode == ParticipantInputActivity.MODE_RESTART) {
-            // Optional but recommended: wipe saved progress so restart is truly from the beginning
+            // Restart from beginning
             progressStore.setLastCompletedIndex(participantId, -1)
             0
         } else {
+            // Continue
             (lastCompleted + 1).coerceAtLeast(0)
         }
         Log.d("ExperimentActivity", "Mode=$mode lastCompleted=$lastCompleted resumeStartIndex=$resumeStartIndex")

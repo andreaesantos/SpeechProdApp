@@ -21,4 +21,9 @@ class VideoProgressStore(private val context: Context) {
     fun reset(participantId: Int) {
         prefs.edit().remove(key(participantId)).apply()
     }
+
+    fun hasAnyProgress(participantId: Int): Boolean {
+        return getLastCompletedIndex(participantId) >= 0
+    }
+
 }

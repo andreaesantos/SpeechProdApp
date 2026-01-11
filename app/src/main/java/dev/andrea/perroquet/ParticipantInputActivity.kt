@@ -30,6 +30,7 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.saveable.rememberSaveable
+import dev.andrea.perroquet.util.VideoProgressStore
 
 
 class ParticipantInputActivity : ComponentActivity() {
@@ -192,6 +193,10 @@ private fun ModePickerScreen(
 ) {
     val context = LocalContext.current
 
+    val hasProgress = remember(participantId) {
+        VideoProgressStore(context).hasAnyProgress(participantId)
+    }
+
     val passedCount = remember(participantId) {
         DecisionStore(context).getPassedCount(participantId)
     }
@@ -227,12 +232,17 @@ private fun ModePickerScreen(
         // 2) RECOMMENCER
         Button(
             onClick = { onPickMode(ParticipantInputActivity.MODE_RESTART) },
+            enabled = hasProgress,
             modifier = Modifier.fillMaxWidth().height(70.dp)
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("Recommencer")
                 Text(
-                    text = "Repartir depuis le début",
+                    text = if (hasProgress) {
+                        "Repartir depuis le début"
+                    } else {
+                        "Disponible après avoir commencé une session"
+                    },
                     style = MaterialTheme.typography.bodySmall
                 )
             }
