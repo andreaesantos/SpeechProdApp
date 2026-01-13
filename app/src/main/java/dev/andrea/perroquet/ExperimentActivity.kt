@@ -511,7 +511,7 @@ class ExperimentActivity : BaseExperimentActivity() {
                 // 1) Show recording overlay + set black immediately
                 runOnUiThread {
                     recordingContainer.visibility = View.VISIBLE
-                    recordingContainer.setBackgroundColor(Color.BLACK)
+                    recordingContainer.setBackgroundColor(Color.WHITE)
                 }
 
                 // 2) Cancel any previous scheduled flip
@@ -522,7 +522,7 @@ class ExperimentActivity : BaseExperimentActivity() {
                 val r = Runnable {
                     // Only flip if we're still recording (prevents weird flips after leaving state)
                     if (experimentState.value == ExperimentState.SPEECH_RECORDING) {
-                        recordingContainer.setBackgroundColor(Color.WHITE)
+                        recordingContainer.setBackgroundColor(Color.BLACK)
                     }
                 }
                 recordingBgRunnable = r
