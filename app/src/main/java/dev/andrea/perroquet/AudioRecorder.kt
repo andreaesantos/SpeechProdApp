@@ -41,6 +41,9 @@ class AudioRecorder(private val context: Context) {
         SAMPLE_RATE, CHANNEL_CONFIG, AUDIO_FORMAT
     ) * BUFFER_SIZE_FACTOR
 
+    private val WAV_HEADER_BYTES = 44L
+    @Volatile private var totalAudioBytesWritten: Long = 0L
+
     private val handler = Handler(Looper.getMainLooper())
 
     /**
@@ -177,6 +180,7 @@ class AudioRecorder(private val context: Context) {
             }
 
             isRecording = true
+            totalAudioBytesWritten = 0L
 
             // Start recording in a separate thread
             recordingThread = Thread {
@@ -184,19 +188,18 @@ class AudioRecorder(private val context: Context) {
             }
             recordingThread?.start()
 
-
-            // Log recording start event
-            try {
-                val fileName = outputFile?.name ?: "unknown_file.wav"
-                dev.andrea.perroquet.logging.EventLogger.getInstance().logRecordingEvent(
-                    dev.andrea.perroquet.logging.EventType.RECORDING_START,
-                    blockNumber,
-                    trialNumber,
-                    fileName
-                )
-            } catch (e: Exception) {
-                Log.e(TAG, "Error logging recording start: ${e.message}", e)
-            }
+//            // Log recording start event
+//            try {
+//                val fileName = outputFile?.name ?: "unknown_file.wav"
+//                dev.andrea.perroquet.logging.EventLogger.getInstance().logRecordingEvent(
+//                    dev.andrea.perroquet.logging.EventType.RECORDING_START,
+//                    blockNumber,
+//                    trialNumber,
+//                    fileName
+//                )
+//            } catch (e: Exception) {
+//                Log.e(TAG, "Error logging recording start: ${e.message}", e)
+//            }
             // Start the actual recording
             audioRecord?.startRecording()
 
@@ -217,21 +220,32 @@ class AudioRecorder(private val context: Context) {
         if (!isRecording) return
 
         isRecording = false
-//        safetyTimer?.cancel()
 
+        // 1) Stop AudioRecord first to unblock read()
         try {
             audioRecord?.stop()
-            outputFile?.let { file ->
-                if (file.exists() && file.length() > 0) {
-                    updateWavHeader(file)
-                    onCompleteCallback?.invoke(file)
-                } else {
-                    onErrorCallback?.invoke("Recording file is empty")
-                }
-            } ?: onErrorCallback?.invoke("Output file is null")
         } catch (e: Exception) {
-            Log.e(TAG, "Error stopping recording", e)
-            onErrorCallback?.invoke("Error stopping recording: ${e.message}")
+            Log.e(TAG, "Error stopping AudioRecord", e)
+        }
+
+        // 2) Wait for writer thread to finish & close the stream
+        try {
+            recordingThread?.join(1500) // small timeout is fine
+        } catch (e: Exception) {
+            Log.e(TAG, "Error joining recording thread", e)
+        }
+
+        // 3) Finalize file + callbacks
+        try {
+            val file = outputFile
+            if (file != null && file.exists() && file.length() > 44) { // >44 = more than WAV header
+                updateWavHeader(file)
+                onCompleteCallback?.invoke(file)
+            } else {
+                onErrorCallback?.invoke("Recording file is empty or too short (size=${file?.length() ?: -1})")            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error finalizing recording", e)
+            onErrorCallback?.invoke("Error finalizing recording: ${e.message}")
         } finally {
             releaseResources()
             Log.d(TAG, "Stopped recording")
@@ -253,14 +267,26 @@ class AudioRecorder(private val context: Context) {
 
             // Write audio data
             while (isRecording) {
-                val read = audioRecord?.read(data, 0, bufferSize) ?: -1
-                if (read > 0) {
-                    outputStream.write(data, 0, read)
+                val read = audioRecord?.read(data, 0, bufferSize) ?: AudioRecord.ERROR_INVALID_OPERATION
+
+                when {
+                    read > 0 -> {
+                        outputStream.write(data, 0, read)
+                        totalAudioBytesWritten += read.toLong()
+                    }
+                    read == 0 -> {
+                        // no data yet; ok to continue
+                    }
+                    else -> {
+                        Log.e(TAG, "AudioRecord.read() error=$read")
+                        onError("AudioRecord.read() error=$read")
+                        break
+                    }
                 }
             }
 
             // Update WAV header with final file size
-            updateWavHeader(outputFile)
+           // updateWavHeader(outputFile)
 
         } catch (e: IOException) {
             Log.e(TAG, "Error writing audio data: ${e.message}", e)
