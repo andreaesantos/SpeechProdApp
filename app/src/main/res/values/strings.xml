@@ -33,18 +33,16 @@
 
 
     <!-- Buttons -->
-    <string name="start_experiment">Démarrer</string>
-    <string name="suivant">Suivant</string>
-    <string name="recharger">Recharger</string>
-    <string name="pass">Valider</string>
-    <string name="fail">Échouer</string>
-    <string name="sortir">Quitter</string>
-    <string name="termine">Terminé</string>
-    <string name="demarrer">Démarrer</string>
-    <string name="terminer">Terminer</string>
-
+    <string name="start_experiment">Start</string>
+    <string name="next">Next</string>
+    <string name="reload">Reload</string>
+    <string name="pass">Pass</string>
+    <string name="fail">Fail</string>
+    <string name="exit">Exit</string>
+    <string name="end">Finish</string>
+    <string name="start">Start</string>
 
     <!-- Dialog buttons -->
-    <string name="continuer">Continuer</string>
-    <string name="terminer_experience">Terminer l’expérience</string>
+    <string name="to_continue">Continue</string>
+    <string name="terminer_experience">Finish experiment</string>
 </resources>

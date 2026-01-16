@@ -475,7 +475,7 @@ class ExperimentActivity : BaseExperimentActivity() {
     private fun checkAndRequestPermissions() {
         val permissions = arrayOf(
             Manifest.permission.RECORD_AUDIO,
-            Manifest.permission.WRITE_EXTERNAL_STORAGE
+//            Manifest.permission.WRITE_EXTERNAL_STORAGE
         )
 
         // Check each permission individually and log the result
@@ -577,7 +577,7 @@ class ExperimentActivity : BaseExperimentActivity() {
                 progressStore.setLastCompletedIndex(participantId, -1)
 
                 nextButton.isEnabled = false
-                nextButton.text = getString(R.string.termine)
+                nextButton.text = getString(R.string.end)
             }
 
             else -> { /* No action needed */ }
@@ -820,12 +820,12 @@ class ExperimentActivity : BaseExperimentActivity() {
                 if (clinical) {
                     nextButton.visibility = View.VISIBLE
                     nextButton.isEnabled = true
-                    nextButton.text = getString(R.string.demarrer)
+                    nextButton.text = getString(R.string.start)
                     startButton.visibility = View.GONE
                 } else {
                     startButton.visibility = View.VISIBLE
                     startButton.isEnabled = true
-                    startButton.text = getString(R.string.demarrer)
+                    startButton.text = getString(R.string.start)
                     nextButton.visibility = View.GONE
                 }
             }
@@ -834,12 +834,12 @@ class ExperimentActivity : BaseExperimentActivity() {
                 if (clinical) {
                     nextButton.visibility = View.VISIBLE
                     nextButton.isEnabled = true
-                    nextButton.text = getString(R.string.terminer)
+                    nextButton.text = getString(R.string.end)
                     startButton.visibility = View.GONE
                 } else {
                     startButton.visibility = View.VISIBLE
                     startButton.isEnabled = true
-                    startButton.text = getString(R.string.terminer)
+                    startButton.text = getString(R.string.end)
                     nextButton.visibility = View.GONE
                 }
             }
@@ -848,7 +848,7 @@ class ExperimentActivity : BaseExperimentActivity() {
                 if (clinical) {
                     nextButton.visibility = View.VISIBLE
                     nextButton.isEnabled = true
-                    nextButton.text = getString(R.string.suivant)
+                    nextButton.text = getString(R.string.next)
                 } else {
                     nextButton.visibility = View.GONE
                 }
@@ -879,7 +879,7 @@ class ExperimentActivity : BaseExperimentActivity() {
                     .setTitle(title)
                     .setMessage(message)
                     .setCancelable(false)
-                    .setPositiveButton(getString(R.string.continuer)) { _, _ ->
+                    .setPositiveButton(getString(R.string.to_continue)) { _, _ ->
                         // Reset error count and continue
                         errorCount = 0
                         recoveryAttempted = true
