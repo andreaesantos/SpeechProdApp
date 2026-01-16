@@ -8,7 +8,7 @@
 /.idea/navEditor.xml
 /.idea/assetWizardSettings.xml
 app/src/main/res/raw
-app/src/main/assets
+app/src/*/assets
 *.json
 app/src/main/storage
 .DS_Store
