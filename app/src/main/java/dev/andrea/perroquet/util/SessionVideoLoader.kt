@@ -13,14 +13,14 @@ class SessionVideoLoader(private val context: Context) {
 
     companion object {
         private const val TAG = "SessionVideoLoader"
-        private const val CSV_FILE_NAME = "perroquet_video_list" // res/raw/final_video_list.csv
+        private const val CSV_FILE_NAME = "trials" // res/raw/final_video_list.csv
     }
 
     fun loadVideosInOrder(): List<String> {
         // 1) Resolve CSV resource id safely
-        val resourceId = runCatching { R.raw.perroquet_video_list }.getOrNull()
+        val resourceId = runCatching { R.raw.trials }.getOrNull()
         if (resourceId == null || resourceId == 0) {
-            Log.e(TAG, "CSV raw resource not found: R.raw.perroquet_video_list")
+            Log.e(TAG, "CSV raw resource not found: R.raw.trials")
             return emptyList()
         }
 
