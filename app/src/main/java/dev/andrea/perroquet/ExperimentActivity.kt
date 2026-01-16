@@ -746,7 +746,7 @@ class ExperimentActivity : BaseExperimentActivity() {
         statusTextView.text = getString(R.string.statut_format, state.name)
 
         // Update trial counters
-        trialTextView.text = getString(R.string.essai_format, currentTrial, totalTrials)
+        trialTextView.text = getString(R.string.trial_counter_format, currentTrial, totalTrials)
 
 
         exitButton.visibility = View.VISIBLE
@@ -764,14 +764,15 @@ class ExperimentActivity : BaseExperimentActivity() {
         // depends on state (below)
         reloadButton.visibility = View.GONE
 
-        val trialsLeft = (totalTrials - currentTrial + 1).coerceAtLeast(0)
+        val current = currentTrial.coerceAtLeast(1)
+        val total = totalTrials.coerceAtLeast(1)
 
         // Update experiment content visibility
         when (state) {
             ExperimentState.TRIAL_VIDEO -> {
                 playerView.visibility = View.VISIBLE
                 trialsLeftTextView.visibility = View.VISIBLE
-                trialsLeftTextView.text = getString(R.string.essais_restants_format, trialsLeft)
+                trialsLeftTextView.text = getString(R.string.trial_counter_format, current, total)
                 trialsLeftTextView.bringToFront()
                 exitButton.bringToFront()
                 reloadButton.visibility = if (clinical) View.GONE else View.VISIBLE

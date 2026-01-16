@@ -17,8 +17,8 @@
 
     <!-- UI labels -->
     <string name="statut_format">Statut : %1$s</string>
-    <string name="essai_format">Essai : %1$d / %2$d</string>
     <string name="essais_restants_format">Essais restants : %1$d</string>
+    <string name="trial_counter_format">%1$d / %2$d</string>
     <string name="zone_contenu_experience">Zone de contenu de l’expérience</string>
 
     <!-- Connexion / batterie -->
