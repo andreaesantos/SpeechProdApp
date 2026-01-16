@@ -235,7 +235,6 @@ abstract class BaseExperimentActivity : AppCompatActivity() {
         transitionToState(ExperimentState.IDLE)
     }
 
-
     /**
      * Transition to a new state
      */

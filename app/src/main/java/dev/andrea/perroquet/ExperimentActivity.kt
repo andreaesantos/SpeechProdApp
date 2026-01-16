@@ -983,7 +983,7 @@ class ExperimentActivity : BaseExperimentActivity() {
 
         decisionStore.setDecision(participantId, videoName, decision)
 
-        Toast.makeText(this, "$decision: $videoName", Toast.LENGTH_SHORT).show()
+        Log.i("Decision", "participant=$participantId decision=$decision video=$videoName")
     }
 
     private fun advanceAfterDecision() {
