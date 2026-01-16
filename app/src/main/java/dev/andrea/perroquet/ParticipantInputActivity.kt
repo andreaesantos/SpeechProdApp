@@ -236,13 +236,9 @@ private fun ModePickerScreen(
             modifier = Modifier.fillMaxWidth().height(70.dp)
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("Recommencer")
+                Text("Recommencer du début")
                 Text(
-                    text = if (hasProgress) {
-                        "Repartir depuis le début"
-                    } else {
-                        "Disponible après avoir commencé une session"
-                    },
+                    text = "Disponible après avoir commencé une session",
                     style = MaterialTheme.typography.bodySmall
                 )
             }
@@ -257,7 +253,7 @@ private fun ModePickerScreen(
             modifier = Modifier.fillMaxWidth().height(70.dp)
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("Stimulations cliniques")
+                Text("Stimulations corticales")
                 Text(
                     text = if (passedEnabled) {
                         "Uniquement les vidéos validées ($passedCount)"
