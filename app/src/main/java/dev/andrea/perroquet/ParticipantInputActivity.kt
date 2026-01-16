@@ -180,7 +180,7 @@ private fun ParticipantIdScreen(
             },
             modifier = Modifier.fillMaxWidth().height(50.dp)
         ) {
-            Text("Suivant")
+            Text("Next")
         }
     }
 }
