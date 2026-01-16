@@ -11,7 +11,7 @@
         android:layout_width="180dp"
         android:layout_height="180dp"
         android:contentDescription="@string/app_name"
-        android:src="@raw/perroquet"
+        android:src="@drawable/icon"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toTopOf="@id/nextButton"
         app:layout_constraintStart_toStartOf="parent"
