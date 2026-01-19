@@ -31,6 +31,9 @@ import java.time.format.DateTimeFormatter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.saveable.rememberSaveable
 import dev.andrea.perroquet.util.VideoProgressStore
+import androidx.core.content.edit
+import androidx.compose.ui.res.stringResource
+
 
 
 class ParticipantInputActivity : ComponentActivity() {
@@ -56,9 +59,9 @@ class ParticipantInputActivity : ComponentActivity() {
 
     private fun saveLastParticipantId(id: Int) {
         getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
-            .edit()
-            .putInt(KEY_LAST_PARTICIPANT_ID, id)
-            .apply()
+            .edit {
+                putInt(KEY_LAST_PARTICIPANT_ID, id)
+            }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -151,7 +154,7 @@ private fun ParticipantIdScreen(
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = "Répétition de Mots",
+            text = stringResource(R.string.task_name),
             style = MaterialTheme.typography.headlineMedium,
             modifier = Modifier.padding(bottom = 24.dp)
         )

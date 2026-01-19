@@ -46,7 +46,7 @@
         android:visibility="gone"
         app:layout_constraintTop_toBottomOf="@id/trialTextView"
         app:layout_constraintStart_toStartOf="parent" />
-        
+
     <TextView
         android:id="@+id/connectionStatusTextView"
         android:layout_width="wrap_content"
@@ -61,7 +61,7 @@
         android:layout_marginEnd="16dp"
         android:background="#80000000"
         android:padding="4dp" />
-        
+
     <TextView
         android:id="@+id/batteryStatusTextView"
         android:layout_width="wrap_content"
@@ -81,17 +81,16 @@
         android:id="@+id/experimentContentFrame"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:background="#EEEEEE"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toTopOf="@id/bottomBar"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
+        app:layout_constraintEnd_toStartOf="parent" />
 
-        <FrameLayout
-            android:id="@+id/experimentContentContainer"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent">
-            
+    <FrameLayout
+        android:id="@+id/experimentContentContainer"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
             <TextView
                 android:id="@+id/experimentContentTextView"
                 android:layout_width="wrap_content"
@@ -99,18 +98,25 @@
                 android:text="@string/experiment_content_area"
                 android:textSize="24sp"
                 android:layout_gravity="center" />
-                
+
             <FrameLayout
                 android:id="@+id/recordingContainer"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:background="@android:color/black"
                 android:visibility="gone">
+
             </FrameLayout>
-        </FrameLayout>
 
         <androidx.media3.ui.PlayerView
             android:id="@+id/playerView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone" />
+
+        <include
+            android:id="@+id/fixationCrossLayout"
+            layout="@layout/fixation_cross_layout"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:visibility="gone" />
@@ -125,82 +131,69 @@
             android:background="#80000000"
             android:padding="8dp"
             android:visibility="gone"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
+            android:layout_gravity="top|end"
             android:layout_marginTop="16dp"
             android:layout_marginEnd="16dp"/>
-            
-        <include
-            android:id="@+id/fixationCrossLayout"
-            layout="@layout/fixation_cross_layout"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:visibility="gone" />
+
+    </FrameLayout>
 
     <LinearLayout
-        android:id="@+id/bottomBar"
-        android:layout_width="0dp"
+        android:id="@+id/rightBar"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
+        android:orientation="vertical"
         android:padding="16dp"
-        android:gravity="center_vertical"
-        android:weightSum="6"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent">
+        android:gravity="center_horizontal"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
 
         <Button
             android:id="@+id/startButton"
-            android:layout_width="0dp"
+            android:layout_width="200dp"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
             android:text="@string/start_experiment"/>
 
         <Button
             android:id="@+id/nextButton"
-            android:layout_width="0dp"
+            android:layout_width="200dp"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
             android:text="@string/next"
-            android:visibility="gone"/>
+            android:visibility="gone"
+            android:layout_marginTop="12dp"/>
 
         <Button
             android:id="@+id/reloadButton"
-            android:layout_width="0dp"
+            android:layout_width="200dp"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
             android:text="@string/reload"
-            android:visibility="gone"/>
+            android:visibility="gone"
+            android:layout_marginTop="12dp"/>
 
         <Button
             android:id="@+id/failButton"
-            android:layout_width="0dp"
+            android:layout_width="200dp"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
             android:text="@string/fail"
-            android:visibility="gone"/>
+            android:visibility="gone"
+            android:layout_marginTop="12dp"/>
 
         <Button
             android:id="@+id/passButton"
-            android:layout_width="0dp"
+            android:layout_width="200dp"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
             android:text="@string/pass"
-            android:visibility="gone"/>
+            android:visibility="gone"
+            android:layout_marginTop="12dp"/>
+
+        <Button
+            android:id="@+id/exitButton"
+            android:layout_width="200dp"
+            android:layout_height="wrap_content"
+            android:text="@string/exit"
+            android:visibility="gone"
+            android:layout_marginTop="20dp"/>
     </LinearLayout>
-
-    <Button
-        android:id="@+id/exitButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/exit"
-        android:layout_marginEnd="16dp"
-        android:layout_marginBottom="16dp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent"
-        android:visibility="gone"/>
-
-
 
 
 </androidx.constraintlayout.widget.ConstraintLayout>

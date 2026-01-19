@@ -370,7 +370,12 @@ abstract class BaseExperimentActivity : AppCompatActivity() {
             // Normalize CSV value -> assets path
             // Accepts "WR1.mp4" or "perroquet_videos/WR1.mp4"
             val trimmed = videoName.trim().removePrefix("/")
-            val assetPath = if (trimmed.startsWith("WR_mp4/")) trimmed else "WR_mp4/$trimmed"
+            val baseDir = getString(R.string.video_assets_dir) // e.g. "AN_mp4"
+            val normalized = trimmed.replace("\\", "/").removePrefix("./")
+
+            val assetPath =
+                if (normalized.startsWith("$baseDir/")) normalized
+                else "$baseDir/$normalized"
 
             // Verify it exists (super useful for debugging)
             Log.d(TAG, "Trying to play assetPath=$assetPath (videoName=$videoName)")
