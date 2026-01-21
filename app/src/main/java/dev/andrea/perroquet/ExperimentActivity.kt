@@ -1,6 +1,7 @@
 package dev.andrea.perroquet
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.app.AlertDialog
 import android.content.Intent
 import android.content.IntentFilter
@@ -499,6 +500,11 @@ class ExperimentActivity : BaseExperimentActivity() {
     }
 
     override fun onStateChanged(state: ExperimentState) {
+
+        if (isReloadingTrial && state == ExperimentState.TRIAL_VIDEO){
+            isReloadingTrial = false
+            return
+        }
         super.onStateChanged(state)
         // Log state change with additional details
 //        eventLogger.logStateChange(state.name,)
@@ -674,7 +680,6 @@ class ExperimentActivity : BaseExperimentActivity() {
                 runOnUiThread {
                     // Hide recording overlay when reloading
                     recordingContainer.visibility = View.GONE
-
                     playerView.visibility = View.VISIBLE
                 }
 
@@ -920,6 +925,7 @@ class ExperimentActivity : BaseExperimentActivity() {
         }
     }
 
+    @SuppressLint("DefaultLocale")
     private fun updateTimeDisplay() {
         val elapsedMs = getElapsedExperimentTime()
         val seconds = (elapsedMs / 1000) % 60
