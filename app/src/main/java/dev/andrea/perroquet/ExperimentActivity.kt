@@ -499,6 +499,11 @@ class ExperimentActivity : BaseExperimentActivity() {
         }
     }
 
+    private fun isPictureNamingFlavor(): Boolean {
+        // This assumes your product flavor is named "pictureNaming" in build.gradle
+        return BuildConfig.FLAVOR == "picturenaming"
+    }
+
     override fun onStateChanged(state: ExperimentState) {
 
         if (isReloadingTrial && state == ExperimentState.TRIAL_VIDEO){
@@ -566,15 +571,16 @@ class ExperimentActivity : BaseExperimentActivity() {
                     failButton.isEnabled = true
                 }
 
-                recordingBgRunnable?.let { handler.removeCallbacks(it) }
-                val r = Runnable {
-                    if (experimentState.value == ExperimentState.SPEECH_RECORDING) {
-                        recordingContainer.setBackgroundColor(Color.BLACK)
+                if (!isPictureNamingFlavor()) {
+                    recordingBgRunnable?.let { handler.removeCallbacks(it) }
+                    val r = Runnable {
+                        if (experimentState.value == ExperimentState.SPEECH_RECORDING) {
+                            recordingContainer.setBackgroundColor(Color.BLACK)
+                        }
                     }
+                    recordingBgRunnable = r
+                    handler.postDelayed(r, RECORDING_BLACK_MS)
                 }
-                recordingBgRunnable = r
-                handler.postDelayed(r, RECORDING_BLACK_MS)
-
                 // This marks the START of the SPEECH WINDOW (not mic capture start)
                 eventLogger.logEvent(EventType.RECORDING_START)
                 lifecycleScope.launch(Dispatchers.IO) {
@@ -768,7 +774,7 @@ class ExperimentActivity : BaseExperimentActivity() {
         exitButton.bringToFront()
 
         // hide overlays everytime updateUI is gone
-        playerView.visibility = View.GONE
+        //playerView.visibility = View.GONE
         experimentContentTextView.visibility = View.GONE
         recordingContainer.visibility = View.GONE
 
@@ -801,6 +807,7 @@ class ExperimentActivity : BaseExperimentActivity() {
 
             ExperimentState.SPEECH_RECORDING -> {
                 //  black->white timing is handled in onStateChanged(SPEECH_RECORDING).
+                playerView.visibility = View.GONE
                 recordingContainer.visibility = View.VISIBLE
 
                 passButton.visibility = if (clinical) View.GONE else View.VISIBLE
@@ -811,6 +818,7 @@ class ExperimentActivity : BaseExperimentActivity() {
             }
 
             ExperimentState.EXPERIMENT_END -> {
+                playerView.visibility = View.GONE
                 experimentContentTextView.visibility = View.VISIBLE
                 experimentContentTextView.text = getString(R.string.experience_terminee)
                 reloadButton.visibility = View.GONE
