@@ -503,9 +503,9 @@ class ExperimentActivity : BaseExperimentActivity() {
 
         if (isReloadingTrial && state == ExperimentState.TRIAL_VIDEO){
             isReloadingTrial = false
-            return
+        } else {
+            super.onStateChanged(state)
         }
-        super.onStateChanged(state)
         // Log state change with additional details
 //        eventLogger.logStateChange(state.name,)
 
@@ -546,7 +546,18 @@ class ExperimentActivity : BaseExperimentActivity() {
 
         when (state) {
 
+            ExperimentState.TRIAL_VIDEO -> {
+                if (playerView.player == null && player != null) {
+                    playerView. player = player
+                }
+
+                playerView.visibility = View.VISIBLE
+                trialsLeftTextView.visibility = View.VISIBLE
+            }
+
             ExperimentState.SPEECH_RECORDING -> {
+
+                startAudioCaptureLeadInIfNeeded()
 
                 runOnUiThread {
                     recordingContainer.visibility = View.VISIBLE
@@ -694,7 +705,6 @@ class ExperimentActivity : BaseExperimentActivity() {
             }
         }
     }
-
 
     /**
      * Update the connection status display
@@ -963,19 +973,6 @@ class ExperimentActivity : BaseExperimentActivity() {
         }
     }
 
-    /**
-     * Update the countdown display
-     * @param remainingMs Remaining time in milliseconds
-     * @param totalMs Total duration in milliseconds
-     */
-    private fun updateCountdownDisplay(remainingMs: Long, totalMs: Long) {
-        // Calculate progress (0.0 to 1.0)
-        val progress = remainingMs.toFloat() / totalMs
-
-        // Update the circular countdown view with progress only (no text)
-        circularCountdownView.progress = progress
-    }
-
     private fun currentVideoId(): String {
         // Prefer mediaId if you set it when creating MediaItems
         player?.currentMediaItem?.mediaId?.let { if (it.isNotBlank()) return it }
@@ -995,10 +992,15 @@ class ExperimentActivity : BaseExperimentActivity() {
 
     private fun advanceAfterDecision() {
         if (experimentState.value != ExperimentState.SPEECH_RECORDING) return
-        if (!isAudioCaptureRunning) return  // nothing to stop
 
         stopRequested = true
-        try { audioRecorder.stopRecording() } catch (_: Exception) {}
+
+        if (isAudioCaptureRunning) {
+            audioRecorder.stopRecording()
+        } else {
+            // Reload edge case: no recording running → advance anyway
+            handleRecordingComplete()
+        }
     }
 
     /**
@@ -1008,6 +1010,8 @@ class ExperimentActivity : BaseExperimentActivity() {
 
         recordingBgRunnable?.let { handler.removeCallbacks(it) }
         recordingBgRunnable = null
+
+        playerView.player = null
 
         val absoluteIndex = resumeStartIndex + (currentTrial - 1)
         progressStore.setLastCompletedIndex(participantId, absoluteIndex)
