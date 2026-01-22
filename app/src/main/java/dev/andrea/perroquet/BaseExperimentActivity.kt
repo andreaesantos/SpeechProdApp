@@ -43,7 +43,7 @@ abstract class BaseExperimentActivity : AppCompatActivity() {
     protected var currentTrial = 0           // 1-based after starting
     protected var totalTrials = 0
 
-
+    protected open val isClinicalMode: Boolean = false
     // Time tracking
     var experimentStartTime = 0L
     private var stateStartTime = 0L
@@ -310,9 +310,6 @@ abstract class BaseExperimentActivity : AppCompatActivity() {
             player?.pause()
         }
     }
-
-    protected open fun onPreVideoRecordingLeadIn() {}
-
     /**
      * Play the video for the current trial
      */
@@ -440,8 +437,10 @@ abstract class BaseExperimentActivity : AppCompatActivity() {
                     Log.e(TAG, "Error logging video end: ${e.message}")
                 }
             }
-            
-            // Transition to fixation delay
+            if (isClinicalMode){Log.d(TAG, "Clinical mode: video ended, waiting for Next Button")
+                return}
+
+          // Transition to fixation delay
             transitionToState(ExperimentState.SPEECH_RECORDING)
         }
     }
@@ -524,28 +523,4 @@ abstract class BaseExperimentActivity : AppCompatActivity() {
         }
         wakeLock = null
     }
-    
-    /**
-     * Find any available video in the raw resources
-     * @return Resource ID of any available video, or 0 if none found
-     */
-//    private fun findAnyAvailableVideo(): Int {
-//        try {
-//            // Try to find any video resource
-//            val rawClass = Class.forName("${packageName}.R\$raw")
-//            for (field in rawClass.declaredFields) {
-//                val resourceName = field.name
-//                if (resourceName.startsWith("video")) {
-//                    val resourceId = resources.getIdentifier(resourceName, "raw", packageName)
-//                    if (resourceId != 0) {
-//                        Log.d(TAG, "Found fallback video: $resourceName")
-//                        return resourceId
-//                    }
-//                }
-//            }
-//        } catch (e: Exception) {
-//            Log.e(TAG, "Error finding fallback video: ${e.message}", e)
-//        }
-//        return 0
-//    }
 }
