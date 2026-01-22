@@ -54,8 +54,6 @@ class ExperimentActivity : BaseExperimentActivity() {
     private lateinit var experimentContentTextView: TextView
     private lateinit var recordingContainer: View
 
-    private lateinit var recordingCountdownView: CircularCountdownView
-    private lateinit var circularCountdownView: CircularCountdownView
     private lateinit var connectionStatusTextView: TextView
     private lateinit var batteryStatusTextView: TextView
 
