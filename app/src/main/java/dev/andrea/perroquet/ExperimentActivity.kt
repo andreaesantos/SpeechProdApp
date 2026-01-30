@@ -223,7 +223,7 @@ class ExperimentActivity : BaseExperimentActivity() {
             if (lastCompleted < 0) {
                 Toast.makeText(
                     this,
-                    "Impossible de recommencer : aucune session n’a encore été commencée.",
+                    "Impossible de recommencer : aucune session n'a encore été commencée.",
                     Toast.LENGTH_LONG
                 ).show()
                 finish()
@@ -410,7 +410,7 @@ class ExperimentActivity : BaseExperimentActivity() {
             try { audioRecorder.stopRecording() } catch (_: Exception) {}
 
             // Save progress at the last completed index (optional)
-            // If you want to mark “aborted”, you can store current absolute index too
+            // If you want to mark "aborted", you can store current absolute index too
 
             // Log + save
             try {
@@ -446,13 +446,13 @@ class ExperimentActivity : BaseExperimentActivity() {
                 // For API 29 and below
                 @Suppress("DEPRECATION")
                 window.decorView.systemUiVisibility = (
-                    View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-                    or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                    or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                    or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                    or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                    or View.SYSTEM_UI_FLAG_FULLSCREEN
-                )
+                        View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                                or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                                or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                                or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                                or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                                or View.SYSTEM_UI_FLAG_FULLSCREEN
+                        )
             }
 
             // Keep screen on during experiment
@@ -480,7 +480,7 @@ class ExperimentActivity : BaseExperimentActivity() {
         // Check each permission individually and log the result
         permissions.forEach { permission ->
             val isGranted = ContextCompat.checkSelfPermission(this, permission) ==
-                PackageManager.PERMISSION_GRANTED
+                    PackageManager.PERMISSION_GRANTED
             Log.d("PermissionCheck", "$permission granted: $isGranted")
         }
 
@@ -566,8 +566,11 @@ class ExperimentActivity : BaseExperimentActivity() {
                 playerView.visibility = View.VISIBLE
                 trialsLeftTextView.visibility = View.VISIBLE
 
-                // Start the timer from video onset ONLY for Auditory Naming
+                // For Auditory Naming: show white overlay during video, then switch to black
                 if (isAuditoryNamingFlavor()) {
+                    recordingContainer.visibility = View.VISIBLE
+                    recordingContainer.setBackgroundColor(Color.WHITE)
+
                     recordingBgRunnable?.let { handler.removeCallbacks(it) }
                     val r = Runnable {
                         recordingContainer.setBackgroundColor(Color.BLACK)
@@ -584,9 +587,8 @@ class ExperimentActivity : BaseExperimentActivity() {
                 runOnUiThread {
                     recordingContainer.visibility = View.VISIBLE
                     if (isAuditoryNamingFlavor()) {
-                        if (recordingBgRunnable != null) {
-                            recordingContainer.setBackgroundColor(Color.WHITE)
-                        }
+                        // Keep the current color (should already be black from the timer)
+                        // No need to change it here
                     } else {
                         // Standard behavior for other flavors: start white
                         recordingContainer.setBackgroundColor(Color.WHITE)
@@ -658,7 +660,7 @@ class ExperimentActivity : BaseExperimentActivity() {
                 if (isAudioCaptureRunning) {
                     audioRecorder.stopRecording()
                 } else {
-                audioRecorder.stopRecording()
+                    audioRecorder.stopRecording()
                 }
             }
             else -> { /* No action needed */ }
@@ -805,7 +807,11 @@ class ExperimentActivity : BaseExperimentActivity() {
         // hide overlays everytime updateUI is gone
         playerView.visibility = View.GONE
         experimentContentTextView.visibility = View.GONE
-        recordingContainer.visibility = View.GONE
+        // Don't hide recordingContainer here for auditory naming during video playback
+        // It will be managed in the state-specific code below
+        if (!(state == ExperimentState.TRIAL_VIDEO && isAuditoryNamingFlavor())) {
+            recordingContainer.visibility = View.GONE
+        }
 
         // hide decision buttons
         passButton.visibility = View.GONE
@@ -826,6 +832,13 @@ class ExperimentActivity : BaseExperimentActivity() {
                 trialsLeftTextView.bringToFront()
                 exitButton.bringToFront()
                 reloadButton.visibility = if (clinical) View.GONE else View.VISIBLE
+
+                // Show white overlay for auditory naming during video
+                if (isAuditoryNamingFlavor()) {
+                    recordingContainer.visibility = View.VISIBLE
+                    recordingContainer.setBackgroundColor(Color.WHITE)
+                    recordingContainer.bringToFront()
+                }
             }
 
             ExperimentState.IDLE -> {
@@ -860,7 +873,7 @@ class ExperimentActivity : BaseExperimentActivity() {
 
         // cancel black-white flip if not recording
 
-        if (state != ExperimentState.SPEECH_RECORDING) {
+        if (state != ExperimentState.SPEECH_RECORDING && state != ExperimentState.TRIAL_VIDEO) {
             recordingBgRunnable?.let { handler.removeCallbacks(it) }
             recordingBgRunnable = null
         }
@@ -988,7 +1001,7 @@ class ExperimentActivity : BaseExperimentActivity() {
             val batteryIntent = registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
             val status = batteryIntent?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
             val isCharging = status == BatteryManager.BATTERY_STATUS_CHARGING ||
-                             status == BatteryManager.BATTERY_STATUS_FULL
+                    status == BatteryManager.BATTERY_STATUS_FULL
 
             val chargingSymbol = if (isCharging) "⚡" else ""
 
