@@ -12,7 +12,7 @@ class ParticipantInputValidationTest {
         assertTrue(ExperimentConfig.isValidParticipantId(1))
         assertTrue(ExperimentConfig.isValidParticipantId(5))
         assertTrue(ExperimentConfig.isValidParticipantId(100))
-        assertTrue(ExperimentConfig.isValidParticipantId(Integer.MAX_VALUE))b
+        assertTrue(ExperimentConfig.isValidParticipantId(Integer.MAX_VALUE))
     }
     
     @Test

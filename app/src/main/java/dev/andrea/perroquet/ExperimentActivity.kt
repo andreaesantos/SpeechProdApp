@@ -497,13 +497,17 @@ class ExperimentActivity : BaseExperimentActivity() {
         }
     }
 
+    private fun isAuditoryNamingFlavor(): Boolean {
+        //  assumes product flavor is named "pictureNaming" in build.gradle
+        return BuildConfig.FLAVOR == "auditorynaming"
+    }
     private fun isPictureNamingFlavor(): Boolean {
-        // This assumes your product flavor is named "pictureNaming" in build.gradle
+        //  assumes product flavor is named "pictureNaming" in build.gradle
         return BuildConfig.FLAVOR == "picturenaming"
     }
 
     private fun isConversationalFlavour(): Boolean {
-        // This assumes your product flavor is named "conversational" in build.gradle
+        //  assumes product flavor is named "conversational" in build.gradle
         return BuildConfig.FLAVOR == "conversational"
     }
 
@@ -561,6 +565,16 @@ class ExperimentActivity : BaseExperimentActivity() {
 
                 playerView.visibility = View.VISIBLE
                 trialsLeftTextView.visibility = View.VISIBLE
+
+                // Start the timer from video onset ONLY for Auditory Naming
+                if (isAuditoryNamingFlavor()) {
+                    recordingBgRunnable?.let { handler.removeCallbacks(it) }
+                    val r = Runnable {
+                        recordingContainer.setBackgroundColor(Color.BLACK)
+                    }
+                    recordingBgRunnable = r
+                    handler.postDelayed(r, RECORDING_BLACK_MS)
+                }
             }
 
             ExperimentState.SPEECH_RECORDING -> {
@@ -569,22 +583,27 @@ class ExperimentActivity : BaseExperimentActivity() {
 
                 runOnUiThread {
                     recordingContainer.visibility = View.VISIBLE
-                    recordingContainer.setBackgroundColor(Color.WHITE)
+                    if (isAuditoryNamingFlavor()) {
+                        if (recordingBgRunnable != null) {
+                            recordingContainer.setBackgroundColor(Color.WHITE)
+                        }
+                    } else {
+                        // Standard behavior for other flavors: start white
+                        recordingContainer.setBackgroundColor(Color.WHITE)
+                    }
                     passButton.isEnabled = true
                     failButton.isEnabled = true
                 }
 
-                if (!isPictureNamingFlavor() && !isConversationalFlavour()) {
+                // Only start the timer HERE if it's NOT the auditory naming flavor
+                if (!isAuditoryNamingFlavor() && !isPictureNamingFlavor() && !isConversationalFlavour()) {
                     recordingBgRunnable?.let { handler.removeCallbacks(it) }
                     val r = Runnable {
-                        if (experimentState.value == ExperimentState.SPEECH_RECORDING) {
-                            recordingContainer.setBackgroundColor(Color.BLACK)
-                        }
+                        recordingContainer.setBackgroundColor(Color.BLACK)
                     }
                     recordingBgRunnable = r
                     handler.postDelayed(r, RECORDING_BLACK_MS)
                 }
-
 
                 // This marks the START of the SPEECH WINDOW (not mic capture start)
                 eventLogger.logEvent(EventType.RECORDING_START)
