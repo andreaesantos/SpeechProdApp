@@ -174,8 +174,6 @@ class ExperimentActivity : BaseExperimentActivity() {
         mode = intent.getStringExtra(ParticipantInputActivity.EXTRA_MODE)
             ?: ParticipantInputActivity.MODE_FULL
 
-        //reloadButton = findViewById(R.id.reloadButton)
-        //reloadButton.visibility = View.GONE
         passButton = findViewById(R.id.passButton)
         failButton = findViewById(R.id.failButton)
 
@@ -497,20 +495,6 @@ class ExperimentActivity : BaseExperimentActivity() {
         }
     }
 
-    private fun isAuditoryNamingFlavor(): Boolean {
-        //  assumes product flavor is named "pictureNaming" in build.gradle
-        return BuildConfig.FLAVOR == "auditorynaming"
-    }
-    private fun isPictureNamingFlavor(): Boolean {
-        //  assumes product flavor is named "pictureNaming" in build.gradle
-        return BuildConfig.FLAVOR == "picturenaming"
-    }
-
-    private fun isConversationalFlavour(): Boolean {
-        //  assumes product flavor is named "conversational" in build.gradle
-        return BuildConfig.FLAVOR == "conversational"
-    }
-
     override fun onStateChanged(state: ExperimentState) {
 
         if (isReloadingTrial && state == ExperimentState.TRIAL_VIDEO){
@@ -518,8 +502,6 @@ class ExperimentActivity : BaseExperimentActivity() {
         } else {
             super.onStateChanged(state)
         }
-        // Log state change with additional details
-//        eventLogger.logStateChange(state.name,)
 
         // Check if we need to show battery warning (only at experiment start)
         if (state == ExperimentState.IDLE && isBatteryLow) {
@@ -554,30 +536,26 @@ class ExperimentActivity : BaseExperimentActivity() {
             }
         }
 
-        // No battery status updates on state change
-
         when (state) {
 
             ExperimentState.TRIAL_VIDEO -> {
                 if (playerView.player == null && player != null) {
-                    playerView. player = player
+                    playerView.player = player
                 }
 
                 playerView.visibility = View.VISIBLE
                 trialsLeftTextView.visibility = View.VISIBLE
 
-                // For Auditory Naming: show white overlay during video, then switch to black
-                if (isAuditoryNamingFlavor()) {
-                    recordingContainer.visibility = View.VISIBLE
-                    recordingContainer.setBackgroundColor(Color.WHITE)
+                // Show white overlay during video
+                recordingContainer.visibility = View.VISIBLE
+                recordingContainer.setBackgroundColor(Color.WHITE)
 
-                    recordingBgRunnable?.let { handler.removeCallbacks(it) }
-                    val r = Runnable {
-                        recordingContainer.setBackgroundColor(Color.BLACK)
-                    }
-                    recordingBgRunnable = r
-                    handler.postDelayed(r, RECORDING_BLACK_MS)
+                recordingBgRunnable?.let { handler.removeCallbacks(it) }
+                val r = Runnable {
+                    recordingContainer.setBackgroundColor(Color.BLACK)
                 }
+                recordingBgRunnable = r
+                handler.postDelayed(r, RECORDING_BLACK_MS)
             }
 
             ExperimentState.SPEECH_RECORDING -> {
@@ -586,25 +564,9 @@ class ExperimentActivity : BaseExperimentActivity() {
 
                 runOnUiThread {
                     recordingContainer.visibility = View.VISIBLE
-                    if (isAuditoryNamingFlavor()) {
-                        // Keep the current color (should already be black from the timer)
-                        // No need to change it here
-                    } else {
-                        // Standard behavior for other flavors: start white
-                        recordingContainer.setBackgroundColor(Color.WHITE)
-                    }
+                    // Keep the current color (should already be black from the timer)
                     passButton.isEnabled = true
                     failButton.isEnabled = true
-                }
-
-                // Only start the timer HERE if it's NOT the auditory naming flavor
-                if (!isAuditoryNamingFlavor() && !isPictureNamingFlavor() && !isConversationalFlavour()) {
-                    recordingBgRunnable?.let { handler.removeCallbacks(it) }
-                    val r = Runnable {
-                        recordingContainer.setBackgroundColor(Color.BLACK)
-                    }
-                    recordingBgRunnable = r
-                    handler.postDelayed(r, RECORDING_BLACK_MS)
                 }
 
                 // This marks the START of the SPEECH WINDOW (not mic capture start)
@@ -804,12 +766,12 @@ class ExperimentActivity : BaseExperimentActivity() {
         exitButton.visibility = View.VISIBLE
         exitButton.bringToFront()
 
-        // hide overlays everytime updateUI is gone
+        // hide overlays everytime updateUI is called
         playerView.visibility = View.GONE
         experimentContentTextView.visibility = View.GONE
-        // Don't hide recordingContainer here for auditory naming during video playback
+        // Don't hide recordingContainer here during video playback
         // It will be managed in the state-specific code below
-        if (!(state == ExperimentState.TRIAL_VIDEO && isAuditoryNamingFlavor())) {
+        if (state != ExperimentState.TRIAL_VIDEO) {
             recordingContainer.visibility = View.GONE
         }
 
@@ -833,12 +795,10 @@ class ExperimentActivity : BaseExperimentActivity() {
                 exitButton.bringToFront()
                 reloadButton.visibility = if (clinical) View.GONE else View.VISIBLE
 
-                // Show white overlay for auditory naming during video
-                if (isAuditoryNamingFlavor()) {
-                    recordingContainer.visibility = View.VISIBLE
-                    recordingContainer.setBackgroundColor(Color.WHITE)
-                    recordingContainer.bringToFront()
-                }
+                // Show white overlay during video
+                recordingContainer.visibility = View.VISIBLE
+                recordingContainer.setBackgroundColor(Color.WHITE)
+                recordingContainer.bringToFront()
             }
 
             ExperimentState.IDLE -> {
@@ -848,7 +808,7 @@ class ExperimentActivity : BaseExperimentActivity() {
             }
 
             ExperimentState.SPEECH_RECORDING -> {
-                //  black->white timing is handled in onStateChanged(SPEECH_RECORDING).
+                // black->white timing is handled in onStateChanged(SPEECH_RECORDING)
                 recordingContainer.visibility = View.VISIBLE
 
                 passButton.visibility = if (clinical) View.GONE else View.VISIBLE
