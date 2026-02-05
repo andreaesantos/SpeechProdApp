@@ -54,7 +54,9 @@ enum class EventType {
     SYSTEM_RECOVERY,
     EXPERIMENT_ABORTED,
     BATTERY_WARNING,
-    ERROR
+    ERROR,
+
+    IMAGE_TIMEOUT
 }
 
 /**

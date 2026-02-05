@@ -28,45 +28,35 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import androidx.core.net.toUri
+import androidx.media3.datasource.RawResourceDataSource
 
 /**
  * Base activity for experiment execution with state management.
  */
 abstract class BaseExperimentActivity : AppCompatActivity() {
 
-    // State management
     private val _experimentState = MutableStateFlow(ExperimentState.IDLE)
     val experimentState: StateFlow<ExperimentState> = _experimentState.asStateFlow()
-
-    // Counters
-    // Counters (no blocks)
     protected var currentTrial = 0           // 1-based after starting
     protected var totalTrials = 0
 
     protected open val isClinicalMode: Boolean = false
-    // Time tracking
     var experimentStartTime = 0L
     private var stateStartTime = 0L
     private var wakeLock: PowerManager.WakeLock? = null
-    
-    // Video playback
     protected var player: ExoPlayer? = null
-    private var currentVideoName: String? = null
+    protected var currentVideoName: String? = null
     private var videoStartTime = 0L
     private var videoDuration = 0L
-
+    protected var imageWindowActive = false
     private val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
     private var delayedVideoStart: Runnable? = null
-
     private val VIDEO_LEAD_IN_MS = 1000L
-
-    // Error handling
     protected var errorCount = 0
     protected val maxErrorsBeforeRecovery = 3
     protected var lastError: String? = null
     protected var recoveryAttempted = false
-    
-    // Battery monitoring
     protected var batteryLevel = 100
     protected var isBatteryLow = false
     private val batteryReceiver = object : BroadcastReceiver() {
@@ -75,12 +65,12 @@ abstract class BaseExperimentActivity : AppCompatActivity() {
             val scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1)
             batteryLevel = (level * 100 / scale.toFloat()).toInt()
             val status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
-            val isCharging = status == BatteryManager.BATTERY_STATUS_CHARGING || 
+            val isCharging = status == BatteryManager.BATTERY_STATUS_CHARGING ||
                              status == BatteryManager.BATTERY_STATUS_FULL
-            
+
             // Consider battery low if below 10% and not charging
             val newLowBatteryState = batteryLevel < 10 && !isCharging
-            
+
             // Only log if state changed
             if (newLowBatteryState != isBatteryLow) {
                 isBatteryLow = newLowBatteryState
@@ -98,26 +88,26 @@ abstract class BaseExperimentActivity : AppCompatActivity() {
             }
         }
     }
-    
+
     companion object {
         internal const val TAG = "BaseExperimentActivity"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
+
         // Keep screen on during experiment
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        
+
         // Acquire wake lock to prevent CPU from sleeping
         acquireWakeLock()
-        
+
         // Initialize ExoPlayer
         initializePlayer()
-        
+
         // Register battery receiver
         registerBatteryReceiver()
-        
+
         // Observe state changes
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -128,7 +118,7 @@ abstract class BaseExperimentActivity : AppCompatActivity() {
             }
         }
     }
-    
+
     /**
      * Log state transition to EventLogger
      */
@@ -140,7 +130,7 @@ abstract class BaseExperimentActivity : AppCompatActivity() {
             Log.e(TAG, "Failed to log state transition: ${e.message}")
         }
     }
-    
+
     /**
      * Register battery receiver to monitor battery level
      */
@@ -148,7 +138,7 @@ abstract class BaseExperimentActivity : AppCompatActivity() {
         try {
             val filter = IntentFilter(Intent.ACTION_BATTERY_CHANGED)
             registerReceiver(batteryReceiver, filter)
-            
+
             // Check battery level at start
             val batteryStatus = registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
             if (batteryStatus != null) {
@@ -156,11 +146,11 @@ abstract class BaseExperimentActivity : AppCompatActivity() {
                 val scale = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1)
                 batteryLevel = (level * 100 / scale.toFloat()).toInt()
                 val status = batteryStatus.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
-                val isCharging = status == BatteryManager.BATTERY_STATUS_CHARGING || 
+                val isCharging = status == BatteryManager.BATTERY_STATUS_CHARGING ||
                                  status == BatteryManager.BATTERY_STATUS_FULL
-                
+
                 isBatteryLow = batteryLevel < 10 && !isCharging
-                
+
                 if (isBatteryLow) {
                     Log.w(TAG, "Starting with low battery level: $batteryLevel%")
                 }
@@ -169,14 +159,14 @@ abstract class BaseExperimentActivity : AppCompatActivity() {
             Log.e(TAG, "Failed to register battery receiver: ${e.message}")
         }
     }
-    
+
     override fun onStart() {
         super.onStart()
         if (player == null) {
             initializePlayer()
         }
     }
-    
+
     override fun onStop() {
         releasePlayer()
         super.onStop()
@@ -188,12 +178,12 @@ abstract class BaseExperimentActivity : AppCompatActivity() {
         } catch (e: Exception) {
             Log.e(TAG, "Error unregistering battery receiver: ${e.message}")
         }
-        
+
         releaseWakeLock()
         releasePlayer()
         super.onDestroy()
     }
-    
+
     /**
      * Initialize the ExoPlayer instance
      */
@@ -201,6 +191,7 @@ abstract class BaseExperimentActivity : AppCompatActivity() {
         player = ExoPlayer.Builder(this)
             .build()
             .also { exo ->
+                exo.videoScalingMode = androidx.media3.common.C.VIDEO_SCALING_MODE_SCALE_TO_FIT
                 exo.addListener(object : Player.Listener {
 
                     override fun onPlaybackStateChanged(playbackState: Int) {
@@ -215,7 +206,7 @@ abstract class BaseExperimentActivity : AppCompatActivity() {
                 })
             }
     }
-    
+
     /**
      * Release the ExoPlayer instance
      */
@@ -241,22 +232,22 @@ abstract class BaseExperimentActivity : AppCompatActivity() {
     protected fun transitionToState(newState: ExperimentState) {
         val oldState = _experimentState.value
         stateStartTime = SystemClock.elapsedRealtime()
-        
+
         // Reset error recovery flag when transitioning to a new state
         if (oldState != newState) {
             recoveryAttempted = false
         }
-        
+
         // Check for battery level before critical states
-        if (isBatteryLow && (newState == ExperimentState.SPEECH_RECORDING || 
+        if (isBatteryLow && (newState == ExperimentState.SPEECH_RECORDING ||
                             newState == ExperimentState.TRIAL_VIDEO)) {
             // Log warning but continue
             Log.w(TAG, "Transitioning to $newState with low battery ($batteryLevel%)")
         }
-        
+
         _experimentState.value = newState
     }
-    
+
     /**
      * Handle error during experiment
      * @return true if error was handled, false if experiment should abort
@@ -264,24 +255,24 @@ abstract class BaseExperimentActivity : AppCompatActivity() {
     protected fun handleError(errorMessage: String, errorSource: String): Boolean {
         lastError = errorMessage
         errorCount++
-        
+
         try {
             // Log the error
             val logger = dev.andrea.perroquet.logging.EventLogger.getInstance()
             logger.logError("$errorSource error: $errorMessage")
-            
+
             // Save logs immediately in case of crash
             logger.saveEvents(true)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to log error: ${e.message}")
         }
-        
+
         // If too many errors, suggest recovery
         if (errorCount >= maxErrorsBeforeRecovery && !recoveryAttempted) {
             recoveryAttempted = true
             return false // Suggest stopping experiment
         }
-        
+
         return true // Continue experiment
     }
 
@@ -290,23 +281,13 @@ abstract class BaseExperimentActivity : AppCompatActivity() {
      */
     protected open fun onStateChanged(state: ExperimentState) {
         if (state == ExperimentState.TRIAL_VIDEO) {
-
-            // Start mic capture immediately (1s before video)
+            currentVideoName = getVideoNameForCurrentTrial()
             (this as? ExperimentActivity)?.startAudioCaptureLeadInIfNeeded()
 
-            // Delay the video by 1s
-            delayedVideoStart?.let { mainHandler.removeCallbacks(it) }
-            val r = Runnable {
-                if (experimentState.value == ExperimentState.TRIAL_VIDEO) {
-                    playCurrentTrialVideo()
-                }
-            }
-            delayedVideoStart = r
-            mainHandler.postDelayed(r, VIDEO_LEAD_IN_MS)
+            // Load video immediately (no delay needed for static display)
+            playVideo(currentVideoName!!)
 
         } else {
-            delayedVideoStart?.let { mainHandler.removeCallbacks(it) }
-            delayedVideoStart = null
             player?.pause()
         }
     }
@@ -317,7 +298,7 @@ abstract class BaseExperimentActivity : AppCompatActivity() {
         val videoName = getVideoNameForCurrentTrial()
         playVideo(videoName)
     }
-    
+
     /**
      * Get the video name for the current trial
      */
@@ -345,59 +326,44 @@ abstract class BaseExperimentActivity : AppCompatActivity() {
     protected open fun playVideo(videoName: String) {
         try {
             currentVideoName = videoName
-            lifecycleScope.launch(Dispatchers.IO) {
-                try {
-                    val logger = dev.andrea.perroquet.logging.EventLogger.getInstance()
-                    val eventType = dev.andrea.perroquet.logging.EventType.VIDEO_START
-                    logger.logVideoEvent(eventType, null, currentTrial, currentVideoName ?: "unknown")
 
-                    val activity = this@BaseExperimentActivity as? ExperimentActivity
-                    activity?.serialPortHelper?.sendEventTrigger(eventType)
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error logging video start: ${e.message}")
-                }
-            }
+            // 1. Clean the video name (remove extension if the CSV/list includes .mp4)
+            val resourceName = videoName.substringBeforeLast(".")
+                .lowercase()
+                .trim()
 
-            videoStartTime = SystemClock.elapsedRealtime()
+            // 2. Get the Resource ID from the name (dynamic lookup)
+            val resId = resources.getIdentifier(resourceName, "raw", packageName)
 
-            // Keep your VIDEO_START logging/trigger code as-is (you already have it)
-
-            val p = player ?: run { onVideoError("Player not initialized"); return }
-
-            // Normalize CSV value -> assets path
-            // Accepts "WR1.mp4" or "perroquet_videos/WR1.mp4"
-            val trimmed = videoName.trim().removePrefix("/")
-            val baseDir = getString(R.string.video_assets_dir) // e.g. "AN_mp4"
-            val normalized = trimmed.replace("\\", "/").removePrefix("./")
-
-            val assetPath =
-                if (normalized.startsWith("$baseDir/")) normalized
-                else "$baseDir/$normalized"
-
-            // Verify it exists (super useful for debugging)
-            Log.d(TAG, "Trying to play assetPath=$assetPath (videoName=$videoName)")
-            try {
-                assets.open(assetPath).close()
-            } catch (e: Exception) {
-                onVideoError("Video asset not found: $assetPath (check spelling/case & that it's under app/src/main/assets/)")
+            if (resId == 0) {
+                onVideoError("Video resource not found: res/raw/$resourceName")
                 return
             }
 
-            val uri = Uri.parse("asset:///$assetPath")
+            // 3. Log start events (keeping your existing logic)
+            lifecycleScope.launch(Dispatchers.IO) {
+                val logger = dev.andrea.perroquet.logging.EventLogger.getInstance()
+                logger.logVideoEvent(EventType.VIDEO_START, null, currentTrial, videoName)
+                (this@BaseExperimentActivity as? ExperimentActivity)?.serialPortHelper?.sendEventTrigger(EventType.VIDEO_START)
+            }
+
+            videoStartTime = SystemClock.elapsedRealtime()
+            val p = player ?: run { onVideoError("Player not initialized"); return }
+
+            // 4. Build the MediaItem using the RawResource URI
+            val uri = RawResourceDataSource.buildRawResourceUri(resId)
             val mediaItem = MediaItem.Builder()
                 .setUri(uri)
-                .setMediaId(videoName.trim())
+                .setMediaId(resId.toString())
                 .build()
 
-            val dataSourceFactory = DefaultDataSource.Factory(this)
-            val mediaSource = ProgressiveMediaSource.Factory(dataSourceFactory)
-                .createMediaSource(mediaItem)
-
-            p.setMediaSource(mediaSource)
+            p.setMediaItem(mediaItem)
             p.prepare()
-            p.playWhenReady = true
+            p.playWhenReady = false
+            p.seekTo(0)
 
-            Log.d(TAG, "Started playing asset video: $assetPath")
+            Log.d(TAG, "Started playing raw video: $resourceName (ID: $resId)")
+
         } catch (e: Exception) {
             Log.e(TAG, "Error playing video: ${e.message}", e)
             onVideoError("Error playing video: ${e.message}")
@@ -407,17 +373,20 @@ abstract class BaseExperimentActivity : AppCompatActivity() {
 /**
      * Called when video playback ends
      */
+    /**
+     * Called when video playback ends
+     */
     private fun onVideoPlaybackEnded() {
         if (experimentState.value == ExperimentState.TRIAL_VIDEO) {
             videoDuration = SystemClock.elapsedRealtime() - videoStartTime
             Log.d(TAG, "Video ended: $currentVideoName, duration: $videoDuration ms")
-            
+
             // Log video end and send trigger (non-blocking)
             lifecycleScope.launch(Dispatchers.IO) {
                 try {
                     val logger = dev.andrea.perroquet.logging.EventLogger.getInstance()
                     val eventType = dev.andrea.perroquet.logging.EventType.VIDEO_END
-                    
+
                     // Log the event
                     logger.logVideoEvent(
                         eventType,
@@ -425,7 +394,7 @@ abstract class BaseExperimentActivity : AppCompatActivity() {
                         currentTrial,
                         currentVideoName ?: "unknown"
                     )
-                    
+
                     // Send trigger if helper is available
                     try {
                         val activity = this@BaseExperimentActivity as? ExperimentActivity
@@ -437,20 +406,25 @@ abstract class BaseExperimentActivity : AppCompatActivity() {
                     Log.e(TAG, "Error logging video end: ${e.message}")
                 }
             }
-            if (isClinicalMode){Log.d(TAG, "Clinical mode: video ended, waiting for Next Button")
-                return}
 
-          // Transition to fixation delay
-            transitionToState(ExperimentState.SPEECH_RECORDING)
+            if (isClinicalMode) {
+                Log.d(TAG, "Clinical mode: video ended, waiting for Next Button")
+                return
+            }
+
+            // ADDED: Only transition if not in image display mode
+            if (!imageWindowActive) {
+                transitionToState(ExperimentState.SPEECH_RECORDING)
+            }
         }
     }
-    
+
     /**
      * Called when there's an error playing the video
      */
     protected open fun onVideoError(errorMessage: String) {
         Log.e(TAG, errorMessage)
-        
+
         if (handleError(errorMessage, "Video playback")) {
             // Default implementation: move to next state
             if (experimentState.value == ExperimentState.TRIAL_VIDEO) {
@@ -466,7 +440,7 @@ abstract class BaseExperimentActivity : AppCompatActivity() {
             }
         }
     }
-    
+
     /**
      * Show error dialog with recovery options
      */

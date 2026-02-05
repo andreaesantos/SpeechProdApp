@@ -6,72 +6,16 @@ plugins {
 
 android {
 
-    buildFeatures {
-        buildConfig = true
-        compose = true
-    }
-
     namespace = "dev.andrea.perroquet"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "dev.andrea.perroquet"
+        applicationId = "dev.andrea.picnam"
         minSdk = 24
         targetSdk = 35
         versionCode = 2
         versionName = "1.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-    }
-
-    flavorDimensions += "task"
-    productFlavors {
-        create("wordrep") {
-            dimension = "task"
-            applicationIdSuffix = ".wordrep"
-            versionNameSuffix = "-wordrep"
-            resValue("string", "app_name", "Word Repetition Task")
-            resValue("string", "video_assets_dir", "WR_mp4")
-        }
-        create("nonwordrep") {
-            dimension = "task"
-            applicationIdSuffix = ".nonwordrep"
-            versionNameSuffix = "-nonwordrep"
-            resValue("string", "app_name", "Nonword Repetition Task")
-            resValue("string", "video_assets_dir", "NW_mp4")
-
-        }
-        create("picturenaming") {
-            dimension = "task"
-            applicationIdSuffix = ".picnaming"
-            versionNameSuffix = "-picnaming"
-            resValue("string", "app_name", "Picture Naming Task")
-            resValue("string", "video_assets_dir", "PN_mp4")
-
-        }
-        create("auditorynaming") {
-            dimension = "task"
-            applicationIdSuffix = ".audnaming"
-            versionNameSuffix = "-audnaming"
-            resValue("string", "app_name", "Auditory Naming Task")
-            resValue("string", "video_assets_dir", "AN_mp4")
-
-        }
-        create("conversational") {
-            dimension = "task"
-            applicationIdSuffix = ".convo"
-            versionNameSuffix = "-convo"
-            resValue("string", "app_name", "Conversational Task")
-            resValue("string", "video_assets_dir", "NC_mp4")
-
-        }
-        create("petitprinceconvo") {
-            dimension = "task"
-            applicationIdSuffix = ".convopetitprince"
-            versionNameSuffix = "-convopetitprince"
-            resValue("string", "app_name", "Petit Prince Conversational Task")
-            resValue("string", "video_assets_dir", "Le_Petit_Prince_scenes")
-
-        }
     }
 
     lint {
@@ -139,4 +83,3 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
 }
-

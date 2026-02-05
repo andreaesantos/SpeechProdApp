@@ -65,12 +65,9 @@ class ExperimentActivity : BaseExperimentActivity() {
     private var runId: String = ""
 
     private var mode: String = ParticipantInputActivity.MODE_FULL
-
-    private var recordingBgRunnable: Runnable? = null
-    private val RECORDING_BLACK_MS = 8_000L
-
+    private val IMAGE_DISPLAY_MS = 8_000L
+    private var imageTimeoutRunnable: Runnable? = null
     private var isAudioCaptureRunning = false
-
     var config: ExperimentConfig.Standard? = null
     var videoQueue: List<String> = emptyList()
     private val videoLoader by lazy { SessionVideoLoader(this) }
@@ -168,6 +165,83 @@ class ExperimentActivity : BaseExperimentActivity() {
 
     private fun isClinical() = (mode == ParticipantInputActivity.MODE_PASSED_ONLY)
 
+    private fun startImageWindow() {
+        imageWindowActive = true
+
+        // The video is already loaded and paused on first frame by playVideo()
+        playerView.visibility = View.VISIBLE
+        playerView.bringToFront()
+        recordingContainer.visibility = View.VISIBLE
+
+        // Cancel any previous timer
+        imageTimeoutRunnable?.let { handler.removeCallbacks(it) }
+
+        imageTimeoutRunnable = Runnable {
+            // 8s elapsed with no decision
+            imageWindowActive = false
+
+            // Hide image, show white screen
+            playerView.visibility = View.GONE
+            recordingContainer.setBackgroundColor(Color.WHITE)
+
+            Log.d(TAG, "Image window expired -> white screen (awaiting decision)")
+        }
+
+        handler.postDelayed(imageTimeoutRunnable!!, IMAGE_DISPLAY_MS)
+    }
+
+    private fun onDecision(decision: String) {
+        // Prevent duplicate decisions
+        if (!passButton.isEnabled && !failButton.isEnabled) {
+            Log.d(TAG, "Decision already recorded, ignoring")
+            return
+        }
+
+        recordDecision(decision)
+
+        passButton.isEnabled = false
+        failButton.isEnabled = false
+
+        if (imageWindowActive) {
+            // Early click: cancel timer, hide UI, manually trigger video end
+            imageTimeoutRunnable?.let { handler.removeCallbacks(it) }
+            imageWindowActive = false
+
+            Log.d(TAG, "Early decision '$decision' -> triggering video end manually")
+
+            // Hide UI elements immediately
+            playerView.visibility = View.GONE
+            recordingContainer.visibility = View.GONE
+
+            // Manually log VIDEO_END since the video didn't actually play to completion
+            lifecycleScope.launch(Dispatchers.IO) {
+                try {
+                    val logger = dev.andrea.perroquet.logging.EventLogger.getInstance()
+                    logger.logVideoEvent(
+                        EventType.VIDEO_END,
+                        null,
+                        currentTrial,
+                        currentVideoName ?: "unknown"
+                    )
+                    serialPortHelper.sendEventTrigger(EventType.VIDEO_END)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error logging early video end: ${e.message}")
+                }
+            }
+
+            // Transition to SPEECH_RECORDING state (this will trigger audio recording)
+            transitionToState(ExperimentState.SPEECH_RECORDING)
+
+        } else {
+            // Normal click after 8s timeout (white screen showing)
+            // We're already in SPEECH_RECORDING state at this point
+            Log.d(TAG, "Decision '$decision' after image timeout -> advancing")
+
+            recordingContainer.visibility = View.GONE
+            advanceAfterDecision()
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_experiment)
@@ -179,19 +253,8 @@ class ExperimentActivity : BaseExperimentActivity() {
 
         decisionStore = dev.andrea.perroquet.util.DecisionStore(this) // uses datasetKey default
 
-        passButton.setOnClickListener {
-            recordDecision("PASS")
-            passButton.isEnabled = false
-            failButton.isEnabled = false
-            advanceAfterDecision()
-        }
-
-        failButton.setOnClickListener {
-            recordDecision("FAIL")
-            passButton.isEnabled = false
-            failButton.isEnabled = false
-            advanceAfterDecision()
-        }
+        passButton.setOnClickListener { onDecision("PASS") }
+        failButton.setOnClickListener { onDecision("FAIL") }
 
         exitButton = findViewById(R.id.exitButton)
 
@@ -370,9 +433,6 @@ class ExperimentActivity : BaseExperimentActivity() {
         // stop periodic UI updates
         handler.removeCallbacks(updateTimeRunnable)
 
-        recordingBgRunnable?.let { handler.removeCallbacks(it) }
-        recordingBgRunnable = null
-
         // stop audio + usb
         audioRecorder.stopRecording()
         serialPortHelper.cleanup()
@@ -496,102 +556,52 @@ class ExperimentActivity : BaseExperimentActivity() {
     }
 
     override fun onStateChanged(state: ExperimentState) {
+        if (state == ExperimentState.TRIAL_VIDEO) {
+            startImageWindow()
 
-        if (isReloadingTrial && state == ExperimentState.TRIAL_VIDEO){
-            isReloadingTrial = false
-        } else {
-            super.onStateChanged(state)
-        }
+            if (playerView.player == null && player != null) {
+                playerView.player = player
+            }
 
-        // Check if we need to show battery warning (only at experiment start)
-        if (state == ExperimentState.IDLE && isBatteryLow) {
-            showBatteryWarning()
-        }
+            playerView.visibility = View.VISIBLE
+            trialsLeftTextView.visibility = View.VISIBLE
 
-        // Send trigger for state change
-        lifecycleScope.launch(Dispatchers.IO) {
-            try {
-                val eventType = when (state) {
-                    else -> null
-                }
-
-                eventType?.let {
-                    // Only attempt to send if connected
-                    if (serialPortHelper.connectionState.value == SerialPortHelper.ConnectionState.CONNECTED) {
-                        val success = serialPortHelper.sendEventTrigger(eventType)
-                        if (success) {
-                            Log.d("ExperimentActivity", "Sent trigger for state: $state")
-                            eventLogger.logEvent(eventType)
-                        } else {
-                            Log.w("ExperimentActivity", "Failed to send trigger for state: $state")
-                            eventLogger.logError("Failed to send trigger for state: $state")
-                        }
-                    } else {
-                        Log.d("ExperimentActivity", "Not sending trigger - USB not connected")
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e("ExperimentActivity", "Error sending trigger: ${e.message}", e)
-                eventLogger.logError("Error sending trigger: ${e.message}")
+            runOnUiThread {
+                passButton.isEnabled = true
+                failButton.isEnabled = true
             }
         }
 
-        when (state) {
+        if (state == ExperimentState.SPEECH_RECORDING) {
+            startAudioCaptureLeadInIfNeeded()
 
-            ExperimentState.TRIAL_VIDEO -> {
-                if (playerView.player == null && player != null) {
-                    playerView.player = player
-                }
-
-                playerView.visibility = View.VISIBLE
-                trialsLeftTextView.visibility = View.VISIBLE
-
-                // Show white overlay during video
+            runOnUiThread {
                 recordingContainer.visibility = View.VISIBLE
-                recordingContainer.setBackgroundColor(Color.WHITE)
-
-                recordingBgRunnable?.let { handler.removeCallbacks(it) }
-                val r = Runnable {
-                    recordingContainer.setBackgroundColor(Color.BLACK)
-                }
-                recordingBgRunnable = r
-                handler.postDelayed(r, RECORDING_BLACK_MS)
+                // Keep the buttons enabled to allow decision after 8s
+                passButton.isEnabled = true
+                failButton.isEnabled = true
             }
 
-            ExperimentState.SPEECH_RECORDING -> {
+            // This marks the START of the SPEECH WINDOW (not mic capture start)
+            eventLogger.logEvent(EventType.RECORDING_START)
+            lifecycleScope.launch(Dispatchers.IO) {
+                serialPortHelper.sendEventTrigger(EventType.RECORDING_START)
+            }
+        }
 
-                startAudioCaptureLeadInIfNeeded()
+        if (state == ExperimentState.EXPERIMENT_END) {
+            eventLogger.logEvent(EventType.EXPERIMENT_END)
 
-                runOnUiThread {
-                    recordingContainer.visibility = View.VISIBLE
-                    // Keep the current color (should already be black from the timer)
-                    passButton.isEnabled = true
-                    failButton.isEnabled = true
-                }
-
-                // This marks the START of the SPEECH WINDOW (not mic capture start)
-                eventLogger.logEvent(EventType.RECORDING_START)
-                lifecycleScope.launch(Dispatchers.IO) {
-                    serialPortHelper.sendEventTrigger(EventType.RECORDING_START)
-                }
+            lifecycleScope.launch(Dispatchers.IO) {
+                serialPortHelper.sendEventTrigger(EventType.EXPERIMENT_END)
             }
 
-            ExperimentState.EXPERIMENT_END -> {
-                eventLogger.logEvent(EventType.EXPERIMENT_END)
+            eventLogger.saveEvents()
 
-                lifecycleScope.launch(Dispatchers.IO) {
-                    serialPortHelper.sendEventTrigger(EventType.EXPERIMENT_END)
-                }
+            progressStore.setLastCompletedIndex(participantId, -1)
 
-                eventLogger.saveEvents()
-
-                progressStore.setLastCompletedIndex(participantId, -1)
-
-                nextButton.isEnabled = false
-                nextButton.text = getString(R.string.end)
-            }
-
-            else -> { /* No action needed */ }
+            nextButton.isEnabled = false
+            nextButton.text = getString(R.string.end)
         }
     }
 
@@ -683,9 +693,6 @@ class ExperimentActivity : BaseExperimentActivity() {
                 isAudioCaptureRunning = false
 
                 try { audioRecorder.stopRecording() } catch (_: Exception) {}
-
-                recordingBgRunnable?.let { handler.removeCallbacks(it) }
-                recordingBgRunnable = null
 
                 runOnUiThread {
                     // Hide recording overlay when reloading
@@ -795,10 +802,9 @@ class ExperimentActivity : BaseExperimentActivity() {
                 exitButton.bringToFront()
                 reloadButton.visibility = if (clinical) View.GONE else View.VISIBLE
 
-                // Show white overlay during video
-                recordingContainer.visibility = View.VISIBLE
-                recordingContainer.setBackgroundColor(Color.WHITE)
-                recordingContainer.bringToFront()
+                passButton.visibility = if (clinical) View.GONE else View.VISIBLE
+                failButton.visibility = if (clinical) View.GONE else View.VISIBLE
+
             }
 
             ExperimentState.IDLE -> {
@@ -829,13 +835,6 @@ class ExperimentActivity : BaseExperimentActivity() {
                 experimentContentTextView.text = getString(R.string.zone_contenu_experience)
                 trialsLeftTextView.visibility = View.GONE
             }
-        }
-
-        // cancel black-white flip if not recording
-
-        if (state != ExperimentState.SPEECH_RECORDING && state != ExperimentState.TRIAL_VIDEO) {
-            recordingBgRunnable?.let { handler.removeCallbacks(it) }
-            recordingBgRunnable = null
         }
 
         when (state) {
@@ -982,12 +981,18 @@ class ExperimentActivity : BaseExperimentActivity() {
     }
 
     private fun currentVideoId(): String {
-        // Prefer mediaId if you set it when creating MediaItems
-        player?.currentMediaItem?.mediaId?.let { if (it.isNotBlank()) return it }
+        // Use the mediaId we set in playVideo()
+        player?.currentMediaItem?.mediaId?.let {
+            if (it.isNotBlank()) {
+                // Convert back to resource name
+                val resId = it.toIntOrNull() ?: return "unknown_video"
+                val resourceName = resources.getResourceEntryName(resId)
+                return "$resourceName.mp4"
+            }
+        }
 
-        // Fallback: use filename from uri
-        val uri = player?.currentMediaItem?.localConfiguration?.uri
-        return uri?.lastPathSegment ?: "unknown_video"
+        // Fallback: use the currentVideoName from BaseExperimentActivity
+        return currentVideoName ?: "unknown_video"
     }
 
     private fun recordDecision(decision: String) {
@@ -1015,9 +1020,6 @@ class ExperimentActivity : BaseExperimentActivity() {
      * Handle completion of recording
      */
     private fun handleRecordingComplete() {
-
-        recordingBgRunnable?.let { handler.removeCallbacks(it) }
-        recordingBgRunnable = null
 
         playerView.player = null
 
