@@ -9,7 +9,7 @@
 /.idea/assetWizardSettings.xml
 app/src/main/res/raw
 app/src/*/assets
-app/src/*/res
+app/src/main/res/drawables/drawable
 *.json
 app/src/main/storage
 .DS_Store

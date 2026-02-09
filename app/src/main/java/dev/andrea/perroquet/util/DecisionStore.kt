@@ -42,8 +42,8 @@ class DecisionStore(
         participantFile(participantId).writeText(obj.toString())
     }
 
-    fun getPassedVideos(participantId: Int): Set<String> =
+    fun getPassedStimuli(participantId: Int): Set<String> =
         loadDecisionMap(participantId).filterValues { it == "PASS" }.keys
 
-    fun getPassedCount(participantId: Int): Int = getPassedVideos(participantId).size
+    fun getPassedCount(participantId: Int): Int = getPassedStimuli(participantId).size
 }

@@ -12,9 +12,6 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.io.File
 import java.io.FileWriter
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 import java.util.concurrent.CopyOnWriteArrayList
 import dev.andrea.perroquet.util.RunStore
 
@@ -44,8 +41,8 @@ enum class EventType {
     BLOCK_END,
     TRIAL_START,
     TRIAL_END,
-    VIDEO_START,
-    VIDEO_END,
+    STIMULUS_ONSET,
+    STIMULUS_OFFSET,
     FIXATION_START,
     FIXATION_END,
     RECORDING_START,
@@ -227,7 +224,6 @@ class EventLogger private constructor(
      */
     fun logRecordingEvent(
         type: EventType,
-        blockNumber: Int?,
         trialNumber: Int,
         audioFileName: String
     ) {
@@ -235,13 +231,12 @@ class EventLogger private constructor(
             events.add(
                 ExperimentEvent(
                     type = type,
-                    blockNumber = blockNumber,
                     trialNumber = trialNumber,
                     audioFileName = audioFileName,
                     relativeTime = SystemClock.elapsedRealtime() - experimentStartTime
                 )
             )
-            Log.d(TAG, "Logged recording event: $type, block: $blockNumber, trial: $trialNumber, file: $audioFileName")
+            Log.d(TAG, "Logged recording event: $type, trial: $trialNumber, file: $audioFileName")
 
             // save intermediate events
             if (type in listOf(

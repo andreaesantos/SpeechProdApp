@@ -7,16 +7,16 @@ import java.io.BufferedReader
 import java.io.InputStreamReader
 
 /**
- * Utility class to load video files for a specific session from a CSV file
+ * Utility class to load stimuli files for a specific session from a CSV file
  */
-class SessionVideoLoader(private val context: Context) {
+class SessionStimuliLoader(private val context: Context) {
 
     companion object {
-        private const val TAG = "SessionVideoLoader"
-        private const val CSV_FILE_NAME = "trials" // res/raw/final_video_list.csv
+        private const val TAG = "SessionStimuliLoader"
+        private const val CSV_FILE_NAME = "trials"
     }
 
-    fun loadVideosInOrder(): List<String> {
+    fun loadStimuliInOrder(): List<String> {
         // 1) Resolve CSV resource id safely
         val resourceId = runCatching { R.raw.trials }.getOrNull()
         if (resourceId == null || resourceId == 0) {
@@ -25,7 +25,7 @@ class SessionVideoLoader(private val context: Context) {
         }
 
         // 2) Parse CSV
-        val videos = try {
+        val stimuli = try {
             context.resources.openRawResource(resourceId).use { inputStream ->
                 BufferedReader(InputStreamReader(inputStream)).use { reader ->
 
@@ -67,17 +67,17 @@ class SessionVideoLoader(private val context: Context) {
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error loading videos from CSV: ${e.message}", e)
+            Log.e(TAG, "Error loading stimuli from CSV: ${e.message}", e)
             emptyList()
         }
 
         // 3) Handle “no videos found”
-        if (videos.isEmpty()) {
-            Log.w(TAG, "No videos found in CSV (or none parsed successfully).")
+        if (stimuli.isEmpty()) {
+            Log.w(TAG, "No stimuli found in CSV (or none parsed successfully).")
         } else {
-            Log.i(TAG, "Loaded ${videos.size} video(s) from CSV. First: ${videos.first()}")
+            Log.i(TAG, "Loaded ${stimuli.size} stimuli from CSV. First: ${stimuli.first()}")
         }
 
-        return videos
+        return stimuli
     }
 }

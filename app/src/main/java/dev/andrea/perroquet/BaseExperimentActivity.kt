@@ -239,7 +239,7 @@ abstract class BaseExperimentActivity : AppCompatActivity() {
         }
 
         // Check for battery level before critical states
-        if (isBatteryLow && (newState == ExperimentState.SPEECH_RECORDING ||
+        if (isBatteryLow && (newState == ExperimentState.SPEECH_PRODUCTION ||
                             newState == ExperimentState.TRIAL_VIDEO)) {
             // Log warning but continue
             Log.w(TAG, "Transitioning to $newState with low battery ($batteryLevel%)")
@@ -282,7 +282,6 @@ abstract class BaseExperimentActivity : AppCompatActivity() {
     protected open fun onStateChanged(state: ExperimentState) {
         if (state == ExperimentState.TRIAL_VIDEO) {
             currentVideoName = getVideoNameForCurrentTrial()
-            (this as? ExperimentActivity)?.startAudioCaptureLeadInIfNeeded()
 
             // Load video immediately (no delay needed for static display)
             playVideo(currentVideoName!!)
@@ -414,7 +413,7 @@ abstract class BaseExperimentActivity : AppCompatActivity() {
 
             // ADDED: Only transition if not in image display mode
             if (!imageWindowActive) {
-                transitionToState(ExperimentState.SPEECH_RECORDING)
+                transitionToState(ExperimentState.SPEECH_PRODUCTION)
             }
         }
     }
@@ -428,7 +427,7 @@ abstract class BaseExperimentActivity : AppCompatActivity() {
         if (handleError(errorMessage, "Video playback")) {
             // Default implementation: move to next state
             if (experimentState.value == ExperimentState.TRIAL_VIDEO) {
-                transitionToState(ExperimentState.SPEECH_RECORDING)
+                transitionToState(ExperimentState.SPEECH_PRODUCTION)
             }
         } else {
             // Critical error - show dialog in UI thread

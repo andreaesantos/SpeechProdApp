@@ -64,7 +64,6 @@ class AudioRecorder(private val context: Context) {
         participantId: Int,
         runId: String,          // <-- add this
         date: String,           // <-- add this (recommended)
-        blockNumber: Int? = null,
         trialNumber: Int,
         onComplete: (File) -> Unit,
         onError: (String) -> Unit
@@ -87,7 +86,7 @@ class AudioRecorder(private val context: Context) {
         }
 
         try {
-            Log.d(TAG, "Starting audio recording for participant $participantId, block $blockNumber, trial $trialNumber")
+            Log.d(TAG, "Starting audio recording for participant $participantId, trial $trialNumber")
 
             // Try to get audio directory from EventLogger, fall back to default if not available
             // Always record into a unique run folder (no overwrites across runs)
@@ -103,10 +102,8 @@ class AudioRecorder(private val context: Context) {
 
 
             // Create output file with naming convention
-            val fileName = if (blockNumber == null) {
+            val fileName =  {
                 "trial_${trialNumber}.wav"
-            } else {
-                "block_${blockNumber}_trial_${trialNumber}.wav"
             }
             outputFile = File(outputDir, fileName)
             Log.d(TAG, "Output file path: ${outputFile?.absolutePath}")
