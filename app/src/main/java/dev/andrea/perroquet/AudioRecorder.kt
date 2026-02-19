@@ -100,11 +100,9 @@ class AudioRecorder(private val context: Context) {
             // Put audio in a subfolder if you want
             val outputDir = File(runDir, "audio").apply { mkdirs() }
 
-
             // Create output file with naming convention
-            val fileName =  {
-                "trial_${trialNumber}.wav"
-            }
+            val fileName = "trial_${trialNumber}.wav"
+
             outputFile = File(outputDir, fileName)
             Log.d(TAG, "Output file path: ${outputFile?.absolutePath}")
             outputFile = File(outputDir, fileName)

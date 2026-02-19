@@ -69,7 +69,7 @@ class ExperimentActivity : BaseExperimentActivity() {
 
     // CHANGED: Removed isAudioCaptureRunning flag - recording is always running
     var config: ExperimentConfig.Standard? = null
-    var imageQueue: List<File> = emptyList()
+    var imageQueue: List<String> = emptyList()
     private val stimuliLoader by lazy { SessionStimuliLoader(this) }
     private val progressStore by lazy { VideoProgressStore(this) }
 
@@ -162,10 +162,13 @@ class ExperimentActivity : BaseExperimentActivity() {
 
     private fun isClinical() = (mode == ParticipantInputActivity.MODE_PASSED_ONLY)
 
-    private fun startImageWindow(imageFile: File) {
+    private fun startImageWindow(imagePath: String) {
         imageWindowActive = true
 
-        imageView.setImageURI(android.net.Uri.fromFile(imageFile))
+        val file = File(imagePath)
+        Log.d(TAG, "Image path: $imagePath")
+
+        imageView.setImageURI(android.net.Uri.fromFile(file))
         imageView.visibility = View.VISIBLE
         imageView.bringToFront()
 
@@ -175,7 +178,6 @@ class ExperimentActivity : BaseExperimentActivity() {
 
         imageTimeoutRunnable = Runnable {
             imageWindowActive = false
-
             imageView.visibility = View.GONE
             recordingContainer.setBackgroundColor(Color.WHITE)
 
@@ -849,7 +851,7 @@ class ExperimentActivity : BaseExperimentActivity() {
     private fun currentImageId(): String {
         return imageQueue
             .getOrNull(resumeStartIndex + currentTrial - 1)
-            ?.name
+            ?.let { File(it).name }
             ?: "unknown_image"
     }
 
