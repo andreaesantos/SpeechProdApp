@@ -303,21 +303,20 @@ abstract class BaseExperimentActivity : AppCompatActivity() {
      */
     protected open fun getVideoNameForCurrentTrial(): String {
         val experimentActivity = this as? ExperimentActivity
-        if (experimentActivity != null && experimentActivity.videoQueue.isNotEmpty()) {
+        if (experimentActivity != null && experimentActivity.imageQueue.isNotEmpty()) {
 
             val absoluteIndex = experimentActivity.resumeStartIndex + (currentTrial - 1)
 
-            return if (absoluteIndex in experimentActivity.videoQueue.indices) {
-                experimentActivity.videoQueue[absoluteIndex]
+            return if (absoluteIndex in experimentActivity.imageQueue.indices) {
+                experimentActivity.imageQueue[absoluteIndex]
             } else {
-                Log.e(TAG, "Video index out of bounds: absoluteIndex=$absoluteIndex size=${experimentActivity.videoQueue.size}")
-                experimentActivity.videoQueue.first()
+                Log.e(TAG, "Video index out of bounds: absoluteIndex=$absoluteIndex size=${experimentActivity.imageQueue.size}")
+                experimentActivity.imageQueue.first()
             }
         }
 
         return "WR1.mp4"
     }
-
 
     /**
      * Play a video by name
@@ -342,8 +341,8 @@ abstract class BaseExperimentActivity : AppCompatActivity() {
             // 3. Log start events (keeping your existing logic)
             lifecycleScope.launch(Dispatchers.IO) {
                 val logger = dev.andrea.perroquet.logging.EventLogger.getInstance()
-                logger.logVideoEvent(EventType.VIDEO_START, null, currentTrial, videoName)
-                (this@BaseExperimentActivity as? ExperimentActivity)?.serialPortHelper?.sendEventTrigger(EventType.VIDEO_START)
+                logger.logVideoEvent(EventType.STIMULUS_ONSET, null, currentTrial, videoName)
+                (this@BaseExperimentActivity as? ExperimentActivity)?.serialPortHelper?.sendEventTrigger(EventType.STIMULUS_ONSET)
             }
 
             videoStartTime = SystemClock.elapsedRealtime()
@@ -384,7 +383,7 @@ abstract class BaseExperimentActivity : AppCompatActivity() {
             lifecycleScope.launch(Dispatchers.IO) {
                 try {
                     val logger = dev.andrea.perroquet.logging.EventLogger.getInstance()
-                    val eventType = dev.andrea.perroquet.logging.EventType.VIDEO_END
+                    val eventType = dev.andrea.perroquet.logging.EventType.STIMULUS_OFFSET
 
                     // Log the event
                     logger.logVideoEvent(

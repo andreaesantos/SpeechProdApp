@@ -52,7 +52,6 @@ enum class EventType {
     EXPERIMENT_ABORTED,
     BATTERY_WARNING,
     ERROR,
-
     IMAGE_TIMEOUT
 }
 
