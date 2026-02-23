@@ -35,14 +35,10 @@ class SerialPortHelper(private val context: Context) {
         object TriggerCode {
             const val EXPERIMENT_START = 1
             const val EXPERIMENT_END = 200
-            const val BLOCK_START = 10
-            const val BLOCK_END = 15
             const val TRIAL_START = 20
             const val TRIAL_END = 25
             const val VIDEO_START = 30
             const val VIDEO_END = 35
-            const val FIXATION_START = 40
-            const val FIXATION_END = 45
             const val RECORDING_START = 50
             const val RECORDING_END = 55
         }
@@ -333,14 +329,10 @@ class SerialPortHelper(private val context: Context) {
         val triggerCode = when (eventType) {
             dev.andrea.perroquet.logging.EventType.EXPERIMENT_START -> TriggerCode.EXPERIMENT_START
             dev.andrea.perroquet.logging.EventType.EXPERIMENT_END -> TriggerCode.EXPERIMENT_END
-            dev.andrea.perroquet.logging.EventType.BLOCK_START -> TriggerCode.BLOCK_START
-            dev.andrea.perroquet.logging.EventType.BLOCK_END -> TriggerCode.BLOCK_END
             dev.andrea.perroquet.logging.EventType.TRIAL_START -> TriggerCode.TRIAL_START
             dev.andrea.perroquet.logging.EventType.TRIAL_END -> TriggerCode.TRIAL_END
             dev.andrea.perroquet.logging.EventType.VIDEO_START -> TriggerCode.VIDEO_START
             dev.andrea.perroquet.logging.EventType.VIDEO_END -> TriggerCode.VIDEO_END
-            dev.andrea.perroquet.logging.EventType.FIXATION_START -> TriggerCode.FIXATION_START
-            dev.andrea.perroquet.logging.EventType.FIXATION_END -> TriggerCode.FIXATION_END
             dev.andrea.perroquet.logging.EventType.RECORDING_START -> TriggerCode.RECORDING_START
             dev.andrea.perroquet.logging.EventType.RECORDING_END -> TriggerCode.RECORDING_END
             else -> return false // No trigger for other event types

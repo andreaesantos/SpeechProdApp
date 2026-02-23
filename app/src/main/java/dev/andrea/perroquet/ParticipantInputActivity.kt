@@ -33,8 +33,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import dev.andrea.perroquet.util.VideoProgressStore
 import androidx.core.content.edit
 import androidx.compose.ui.res.stringResource
-
-
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 
 class ParticipantInputActivity : ComponentActivity() {
 
@@ -62,6 +64,27 @@ class ParticipantInputActivity : ComponentActivity() {
             .edit {
                 putInt(KEY_LAST_PARTICIPANT_ID, id)
             }
+    }
+
+    private var pendingNavigationArgs: NavigationArgs? = null
+    private data class NavigationArgs(
+        val participantId: Int,
+        val date: String,
+        val runId: String,
+        val mode: String
+    )
+
+    private val requestAudioPermission = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        val args = pendingNavigationArgs ?: return@registerForActivityResult
+        pendingNavigationArgs = null
+        if (granted) {
+            startContinuousRecordingAndNavigate(args)
+        } else {
+            // Permission denied — navigate anyway but recording won't work
+            startContinuousRecordingAndNavigate(args)
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -122,11 +145,31 @@ class ParticipantInputActivity : ComponentActivity() {
         runId: String,
         mode: String
     ) {
+        val args = NavigationArgs(participantId, date, runId, mode)
+
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
+            == PackageManager.PERMISSION_GRANTED
+        ) {
+            startContinuousRecordingAndNavigate(args)
+        } else {
+            pendingNavigationArgs = args
+            requestAudioPermission.launch(Manifest.permission.RECORD_AUDIO)
+        }
+    }
+
+    private fun startContinuousRecordingAndNavigate(args: NavigationArgs) {
+        ContinuousRecorder.start(
+            context       = this,
+            participantId = args.participantId,
+            date          = args.date,
+            runId         = args.runId
+        )
+
         val intent = Intent(this, InstructionActivity::class.java).apply {
-            putExtra(EXTRA_PARTICIPANT_ID, participantId)
-            putExtra(EXTRA_DATE, date)
-            putExtra(EXTRA_RUN_ID, runId)
-            putExtra(EXTRA_MODE, mode)
+            putExtra(EXTRA_PARTICIPANT_ID, args.participantId)
+            putExtra(EXTRA_DATE, args.date)
+            putExtra(EXTRA_RUN_ID, args.runId)
+            putExtra(EXTRA_MODE, args.mode)
         }
         startActivity(intent)
     }

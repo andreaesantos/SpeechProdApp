@@ -40,14 +40,10 @@ data class ExperimentEvent(
 enum class EventType {
     EXPERIMENT_START,
     EXPERIMENT_END,
-    BLOCK_START,
-    BLOCK_END,
     TRIAL_START,
     TRIAL_END,
     VIDEO_START,
     VIDEO_END,
-    FIXATION_START,
-    FIXATION_END,
     RECORDING_START,
     RECORDING_END,
     STATE_CHANGE,
@@ -103,31 +99,6 @@ class EventLogger private constructor(
     }
 
     /**
-     * Log an experiment event
-     */
-//    fun logEvent(event: ExperimentEvent) {
-//        scope.launch {
-//            events.add(event)
-//            Log.d(TAG, "Logged event: ${event.type}")
-//
-//            // Save after certain important events
-//            if (event.type in listOf(
-//                    EventType.EXPERIMENT_START,
-//                    EventType.BLOCK_START,
-//                    EventType.FIXATION_START,
-//                    EventType.TRIAL_START,
-//                    EventType.FIXATION_END,
-//                    EventType.TRIAL_END,
-//                    EventType.BLOCK_END,
-//                    EventType.ERROR
-//                )
-//            ) {
-//                saveEvents(is_intermediate = true)
-//            }
-//        }
-//    }
-
-    /**
      * Log a simple event with just a type
      */
     fun logEvent(type: EventType) {
@@ -166,22 +137,6 @@ class EventLogger private constructor(
                 )
             )
             Log.d(TAG, "Logged state change: $state")
-        }
-    }
-
-    /**
-     * Log a block event
-     */
-    fun logBlockEvent(type: EventType, blockNumber: Int?) {
-        scope.launch {
-            events.add(
-                ExperimentEvent(
-                    type = type,
-                    blockNumber = blockNumber,
-                    relativeTime = SystemClock.elapsedRealtime() - experimentStartTime
-                )
-            )
-            Log.d(TAG, "Logged block event: $type, block: $blockNumber")
         }
     }
 

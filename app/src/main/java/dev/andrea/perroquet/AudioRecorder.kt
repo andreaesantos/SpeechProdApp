@@ -20,12 +20,11 @@ import dev.andrea.perroquet.util.RunStore
 /**
  * Handles audio recording functionality for the experiment.
  */
-class AudioRecorder(private val context: Context) {
+class AudioRecorder(context: Context) {
+    private val context: Context = context.applicationContext
 
     companion object {
         private const val TAG = "AudioRecorder"
-
-        // Audio configuration
         private const val SAMPLE_RATE = 44100
         private const val CHANNEL_CONFIG = AudioFormat.CHANNEL_IN_MONO
         private const val AUDIO_FORMAT = AudioFormat.ENCODING_PCM_16BIT
@@ -57,162 +56,60 @@ class AudioRecorder(private val context: Context) {
      */
     private var onCompleteCallback: ((File) -> Unit)? = null
     private var onErrorCallback: ((String) -> Unit)? = null
-    private val SAFETY_TIMEOUT = 120_000L // 2 minutes
-//    private var safetyTimer: Timer? = null
 
-    fun startRecording(
+    /**
+     * Starts a session-level recording with an explicit filename instead of
+     * deriving it from block/trial numbers. Everything else is identical to
+     * startRecording().
+     */
+    fun startSessionRecording(
         participantId: Int,
-        runId: String,          // <-- add this
-        date: String,           // <-- add this (recommended)
-        blockNumber: Int? = null,
-        trialNumber: Int,
+        runId: String,
+        date: String,
+        fileName: String,
         onComplete: (File) -> Unit,
         onError: (String) -> Unit
     ) {
         this.onCompleteCallback = onComplete
-        this.onErrorCallback = onError
-//        safetyTimer = Timer().apply {
-//            schedule(object : TimerTask() {
-//                override fun run() {
-//                    if (isRecording) {
-//                        Log.w(TAG, "Safety timeout triggered")
-//                        stopRecording()
-//                    }
-//                }
-//            }, SAFETY_TIMEOUT)
-//        }
-        if (isRecording) {
-            onError("Recording already in progress")
-            return
-        }
+        this.onErrorCallback    = onError
+
+        if (isRecording) { onError("Recording already in progress"); return }
 
         try {
-            Log.d(TAG, "Starting audio recording for participant $participantId, block $blockNumber, trial $trialNumber")
-
-            // Try to get audio directory from EventLogger, fall back to default if not available
-            // Always record into a unique run folder (no overwrites across runs)
-            val runDir = RunStore.getOrCreateRunDir(
-                context = context,
-                participantId = participantId,
-                date = date,
-                runId = runId
-            )
-
-            // Put audio in a subfolder if you want
+            val runDir    = RunStore.getOrCreateRunDir(context, participantId, date, runId)
             val outputDir = File(runDir, "audio").apply { mkdirs() }
+            outputFile    = File(outputDir, fileName)
+            Log.d(TAG, "Session recording output: ${outputFile?.absolutePath}")
 
-
-            // Create output file with naming convention
-            val fileName = if (blockNumber == null) {
-                "trial_${trialNumber}.wav"
-            } else {
-                "block_${blockNumber}_trial_${trialNumber}.wav"
-            }
-            outputFile = File(outputDir, fileName)
-            Log.d(TAG, "Output file path: ${outputFile?.absolutePath}")
-            outputFile = File(outputDir, fileName)
-            Log.d(TAG, "Output file path: ${outputFile?.absolutePath}")
-
-            // Check for recording permission
-            val permissionCheck = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO)
-            Log.d(TAG, "RECORD_AUDIO permission check result: $permissionCheck")
-
-            if (permissionCheck != PackageManager.PERMISSION_GRANTED) {
-                val errorMsg = "Recording permission not granted (result: $permissionCheck)"
-                Log.e(TAG, errorMsg)
-                onError(errorMsg)
-                releaseResources()
-                return
+            val permCheck = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO)
+            if (permCheck != PackageManager.PERMISSION_GRANTED) {
+                onError("Recording permission not granted"); releaseResources(); return
             }
 
-            try {
-                // Initialize AudioRecord with explicit buffer size
-                val minBufferSize = AudioRecord.getMinBufferSize(
-                    SAMPLE_RATE, CHANNEL_CONFIG, AUDIO_FORMAT
-                )
+            val minBuf = AudioRecord.getMinBufferSize(SAMPLE_RATE, CHANNEL_CONFIG, AUDIO_FORMAT)
+            if (minBuf <= 0) { onError("Invalid buffer size: $minBuf"); releaseResources(); return }
 
-                Log.d(TAG, "Minimum buffer size: $minBufferSize, using: $bufferSize")
-
-                if (minBufferSize <= 0) {
-                    val errorMsg = "Invalid minimum buffer size: $minBufferSize"
-                    Log.e(TAG, errorMsg)
-                    onError(errorMsg)
-                    releaseResources()
-                    return
-                }
-
-                audioRecord = AudioRecord(
-                    MediaRecorder.AudioSource.MIC,
-                    SAMPLE_RATE,
-                    CHANNEL_CONFIG,
-                    AUDIO_FORMAT,
-                    bufferSize
-                )
-
-                // Check if AudioRecord was initialized properly
-                if (audioRecord?.state != AudioRecord.STATE_INITIALIZED) {
-                    val errorMsg = "Failed to initialize AudioRecord (state: ${audioRecord?.state})"
-                    Log.e(TAG, errorMsg)
-                    onError(errorMsg)
-                    releaseResources()
-                    return
-                }
-
-                Log.d(TAG, "AudioRecord successfully initialized")
-            } catch (e: SecurityException) {
-                val errorMsg = "Security exception: Recording permission denied: ${e.message}"
-                Log.e(TAG, errorMsg, e)
-                onError(errorMsg)
-                releaseResources()
-                return
-            } catch (e: IllegalArgumentException) {
-                val errorMsg = "Invalid AudioRecord parameters: ${e.message}"
-                Log.e(TAG, errorMsg, e)
-                onError(errorMsg)
-                releaseResources()
-                return
-            } catch (e: Exception) {
-                val errorMsg = "Error initializing AudioRecord: ${e.message}"
-                Log.e(TAG, errorMsg, e)
-                onError(errorMsg)
-                releaseResources()
-                return
+            audioRecord = AudioRecord(
+                MediaRecorder.AudioSource.MIC,
+                SAMPLE_RATE, CHANNEL_CONFIG, AUDIO_FORMAT, bufferSize
+            )
+            if (audioRecord?.state != AudioRecord.STATE_INITIALIZED) {
+                onError("AudioRecord init failed"); releaseResources(); return
             }
 
-            isRecording = true
+            isRecording            = true
             totalAudioBytesWritten = 0L
-
-            // Start recording in a separate thread
-            recordingThread = Thread {
-                writeAudioDataToFile(onError)
-            }
+            recordingThread = Thread { writeAudioDataToFile(onError) }
             recordingThread?.start()
-
-//            // Log recording start event
-//            try {
-//                val fileName = outputFile?.name ?: "unknown_file.wav"
-//                dev.andrea.perroquet.logging.EventLogger.getInstance().logRecordingEvent(
-//                    dev.andrea.perroquet.logging.EventType.RECORDING_START,
-//                    blockNumber,
-//                    trialNumber,
-//                    fileName
-//                )
-//            } catch (e: Exception) {
-//                Log.e(TAG, "Error logging recording start: ${e.message}", e)
-//            }
-            // Start the actual recording
             audioRecord?.startRecording()
+            Log.d(TAG, "Session recording started → ${outputFile?.absolutePath}")
 
-            // Recording will be manually stopped by user
-
-            Log.d(TAG, "Started recording to ${outputFile?.absolutePath}")
         } catch (e: Exception) {
-            Log.e(TAG, "Error starting recording: ${e.message}", e)
-            onError("Error starting recording: ${e.message}")
+            Log.e(TAG, "Error starting session recording: ${e.message}", e)
+            onError("Error starting session recording: ${e.message}")
             releaseResources()
         }
     }
-
     /**
      * Stop the current recording
      */
@@ -286,7 +183,7 @@ class AudioRecorder(private val context: Context) {
             }
 
             // Update WAV header with final file size
-           // updateWavHeader(outputFile)
+            // updateWavHeader(outputFile)
 
         } catch (e: IOException) {
             Log.e(TAG, "Error writing audio data: ${e.message}", e)

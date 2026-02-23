@@ -54,13 +54,6 @@ abstract class BaseExperimentActivity : AppCompatActivity() {
     private var currentVideoName: String? = null
     private var videoStartTime = 0L
     private var videoDuration = 0L
-
-    private val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
-    private var delayedVideoStart: Runnable? = null
-
-    private val VIDEO_LEAD_IN_MS = 1000L
-
-    // Error handling
     protected var errorCount = 0
     protected val maxErrorsBeforeRecovery = 3
     protected var lastError: String? = null
@@ -248,7 +241,7 @@ abstract class BaseExperimentActivity : AppCompatActivity() {
         }
         
         // Check for battery level before critical states
-        if (isBatteryLow && (newState == ExperimentState.SPEECH_RECORDING || 
+        if (isBatteryLow && (newState == ExperimentState.SPEECH_PRODUCTION ||
                             newState == ExperimentState.TRIAL_VIDEO)) {
             // Log warning but continue
             Log.w(TAG, "Transitioning to $newState with low battery ($batteryLevel%)")
@@ -290,23 +283,8 @@ abstract class BaseExperimentActivity : AppCompatActivity() {
      */
     protected open fun onStateChanged(state: ExperimentState) {
         if (state == ExperimentState.TRIAL_VIDEO) {
-
-            // Start mic capture immediately (1s before video)
-            (this as? ExperimentActivity)?.startAudioCaptureLeadInIfNeeded()
-
-            // Delay the video by 1s
-            delayedVideoStart?.let { mainHandler.removeCallbacks(it) }
-            val r = Runnable {
-                if (experimentState.value == ExperimentState.TRIAL_VIDEO) {
-                    playCurrentTrialVideo()
-                }
-            }
-            delayedVideoStart = r
-            mainHandler.postDelayed(r, VIDEO_LEAD_IN_MS)
-
+            playCurrentTrialVideo()
         } else {
-            delayedVideoStart?.let { mainHandler.removeCallbacks(it) }
-            delayedVideoStart = null
             player?.pause()
         }
     }
@@ -441,7 +419,7 @@ abstract class BaseExperimentActivity : AppCompatActivity() {
                 return}
 
           // Transition to fixation delay
-            transitionToState(ExperimentState.SPEECH_RECORDING)
+            transitionToState(ExperimentState.SPEECH_PRODUCTION)
         }
     }
     
@@ -454,7 +432,7 @@ abstract class BaseExperimentActivity : AppCompatActivity() {
         if (handleError(errorMessage, "Video playback")) {
             // Default implementation: move to next state
             if (experimentState.value == ExperimentState.TRIAL_VIDEO) {
-                transitionToState(ExperimentState.SPEECH_RECORDING)
+                transitionToState(ExperimentState.SPEECH_PRODUCTION)
             }
         } else {
             // Critical error - show dialog in UI thread
