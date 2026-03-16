@@ -20,14 +20,18 @@ class DecisionStore(
         val txt = f.readText()
         if (txt.isBlank()) return mutableMapOf()
 
-        val obj = JSONObject(txt)
-        val out = mutableMapOf<String, String>()
-        val keys = obj.keys()
-        while (keys.hasNext()) {
-            val k = keys.next()
-            out[k] = obj.getString(k)
+        return try {
+            val obj = JSONObject(txt)
+            val out = mutableMapOf<String, String>()
+            val keys = obj.keys()
+            while (keys.hasNext()) {
+                val k = keys.next()
+                out[k] = obj.getString(k)
+            }
+            out
+        } catch (e: Exception) {
+            mutableMapOf()
         }
-        return out
     }
 
     fun setDecision(participantId: Int, videoName: String, decision: String) {
@@ -40,6 +44,13 @@ class DecisionStore(
         for ((k, v) in map) obj.put(k, v)
 
         participantFile(participantId).writeText(obj.toString())
+    }
+
+    fun clearDecisions(participantId: Int) {
+        val f = participantFile(participantId)
+        if (f.exists()) {
+            f.delete()
+        }
     }
 
     fun getPassedVideos(participantId: Int): Set<String> =

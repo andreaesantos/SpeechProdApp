@@ -42,6 +42,7 @@ class ParticipantInputActivity : ComponentActivity() {
 
     companion object {
         const val EXTRA_PARTICIPANT_ID = "PARTICIPANT_ID"
+        const val EXTRA_PARTICIPANT_NAME = "PARTICIPANT_NAME"
         const val EXTRA_DATE = "DATE"
         const val EXTRA_RUN_ID = "RUN_ID"
         const val EXTRA_MODE = "MODE"
@@ -52,6 +53,8 @@ class ParticipantInputActivity : ComponentActivity() {
         const val MODE_PASSED_ONLY = "PASSED_ONLY"
         private const val PREFS_NAME = "speechprod_prefs"
         private const val KEY_LAST_PARTICIPANT_ID = "last_participant_id"
+        private const val PREFIX_NAME_MAPPING = "name_mapping_"
+        private const val PREFIX_ID_MAPPING = "id_mapping_"
     }
 
     private fun loadLastParticipantId(): Int? {
@@ -59,16 +62,41 @@ class ParticipantInputActivity : ComponentActivity() {
         return if (prefs.contains(KEY_LAST_PARTICIPANT_ID)) prefs.getInt(KEY_LAST_PARTICIPANT_ID, -1) else null
     }
 
-    private fun saveLastParticipantId(id: Int) {
-        getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
-            .edit {
-                putInt(KEY_LAST_PARTICIPANT_ID, id)
+    private fun loadParticipantName(id: Int): String {
+        val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+        return prefs.getString(PREFIX_NAME_MAPPING + id, "") ?: ""
+    }
+
+    private fun loadParticipantIdByName(name: String): Int? {
+        val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+        val id = prefs.getInt(PREFIX_ID_MAPPING + name.lowercase().trim(), -1)
+        return if (id != -1) id else null
+    }
+
+    private fun saveParticipantInfo(id: Int, name: String) {
+        val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+        val existingName = prefs.getString(PREFIX_NAME_MAPPING + id, "") ?: ""
+        val normalizedName = name.lowercase().trim()
+
+        // If the name changed for this ID, reset decisions and progress
+        if (existingName.isNotBlank() && name.isNotBlank() && existingName != name) {
+            DecisionStore(this).clearDecisions(id)
+            VideoProgressStore(this).setLastCompletedIndex(id, -1)
+        }
+
+        prefs.edit {
+            putInt(KEY_LAST_PARTICIPANT_ID, id)
+            if (name.isNotBlank()) {
+                putString(PREFIX_NAME_MAPPING + id, name)
+                putInt(PREFIX_ID_MAPPING + normalizedName, id)
             }
+        }
     }
 
     private var pendingNavigationArgs: NavigationArgs? = null
     private data class NavigationArgs(
         val participantId: Int,
+        val participantName: String,
         val date: String,
         val runId: String,
         val mode: String
@@ -79,12 +107,7 @@ class ParticipantInputActivity : ComponentActivity() {
     ) { granted ->
         val args = pendingNavigationArgs ?: return@registerForActivityResult
         pendingNavigationArgs = null
-        if (granted) {
-            startContinuousRecordingAndNavigate(args)
-        } else {
-            // Permission denied — navigate anyway but recording won't work
-            startContinuousRecordingAndNavigate(args)
-        }
+        startContinuousRecordingAndNavigate(args)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -98,30 +121,36 @@ class ParticipantInputActivity : ComponentActivity() {
                 ) {
                     var step by remember { mutableStateOf(1) }
                     var participantId by remember { mutableStateOf<Int?>(null) }
+                    var participantName by remember { mutableStateOf("") }
 
                     val lastPid = remember { loadLastParticipantId() }
 
                     if (step == 1) {
                         ParticipantIdScreen(
                             initialParticipantId = lastPid,
-                            onNext = { pid ->
-                                saveLastParticipantId(pid)
-
+                            onLoadName = { pid -> loadParticipantName(pid) },
+                            onLoadIdByName = { name -> loadParticipantIdByName(name) },
+                            onNext = { pid, name ->
+                                saveParticipantInfo(pid, name)
                                 participantId = pid
+                                participantName = name
                                 step = 2
                             }
                         )
                     } else {
                         val pid = participantId ?: -1
+                        val name = participantName
 
                         ModePickerScreen(
                             participantId = pid,
+                            participantName = name,
                             onBack = { step = 1 },
                             onPickMode = { mode ->
                                 val date = LocalDate.now().toString()
                                 val runId = generateRunId()
                                 navigateToInstructions(
                                     participantId = pid,
+                                    participantName = name,
                                     date = date,
                                     runId = runId,
                                     mode = mode
@@ -141,11 +170,12 @@ class ParticipantInputActivity : ComponentActivity() {
 
     private fun navigateToInstructions(
         participantId: Int,
+        participantName: String,
         date: String,
         runId: String,
         mode: String
     ) {
-        val args = NavigationArgs(participantId, date, runId, mode)
+        val args = NavigationArgs(participantId, participantName, date, runId, mode)
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
             == PackageManager.PERMISSION_GRANTED
@@ -167,6 +197,7 @@ class ParticipantInputActivity : ComponentActivity() {
 
         val intent = Intent(this, InstructionActivity::class.java).apply {
             putExtra(EXTRA_PARTICIPANT_ID, args.participantId)
+            putExtra(EXTRA_PARTICIPANT_NAME, args.participantName)
             putExtra(EXTRA_DATE, args.date)
             putExtra(EXTRA_RUN_ID, args.runId)
             putExtra(EXTRA_MODE, args.mode)
@@ -179,17 +210,46 @@ class ParticipantInputActivity : ComponentActivity() {
 @Composable
 private fun ParticipantIdScreen(
     initialParticipantId: Int?,
-    onNext: (Int) -> Unit
+    onLoadName: (Int) -> String,
+    onLoadIdByName: (String) -> Int?,
+    onNext: (Int, String) -> Unit
 ) {
-
     var participantIdText by rememberSaveable { mutableStateOf("") }
+    var participantNameText by rememberSaveable { mutableStateOf("") }
 
     LaunchedEffect(initialParticipantId) {
         if (participantIdText.isBlank()) {
-            participantIdText = initialParticipantId?.takeIf { it > 0 }?.toString() ?: ""
+            val pid = initialParticipantId?.takeIf { it > 0 }
+            if (pid != null) {
+                participantIdText = pid.toString()
+                participantNameText = onLoadName(pid)
+            }
         }
     }
-    var participantError by remember { mutableStateOf(false) }
+    
+    // Auto-load name when ID changes
+    LaunchedEffect(participantIdText) {
+        val pid = participantIdText.toIntOrNull()
+        if (pid != null && ExperimentConfig.isValidParticipantId(pid)) {
+            val name = onLoadName(pid)
+            if (name.isNotBlank()) {
+                participantNameText = name
+            }
+        }
+    }
+
+    // Auto-load ID when name changes
+    LaunchedEffect(participantNameText) {
+        if (participantNameText.isNotBlank()) {
+            val pid = onLoadIdByName(participantNameText)
+            if (pid != null) {
+                participantIdText = pid.toString()
+            }
+        }
+    }
+
+    var nameError by remember { mutableStateOf<String?>(null) }
+    var idError by remember { mutableStateOf<String?>(null) }
 
     Column(
         modifier = Modifier.fillMaxSize().padding(16.dp),
@@ -203,26 +263,62 @@ private fun ParticipantIdScreen(
         )
 
         OutlinedTextField(
+            value = participantNameText,
+            onValueChange = { 
+                participantNameText = it
+                nameError = null
+                idError = null
+            },
+            label = { Text("Nom du participant") },
+            isError = nameError != null,
+            supportingText = { nameError?.let { Text(it) } },
+            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+        )
+
+        OutlinedTextField(
             value = participantIdText,
             onValueChange = {
                 participantIdText = it
-                participantError = false
+                nameError = null
+                idError = null
             },
-            label = { Text("Identifiant du participant") },
+            label = { Text("Identifiant du participant (Numéro)") },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            isError = participantError,
-            supportingText = {
-                if (participantError) Text("L’ID du participant doit être un nombre positif")
-            },
+            isError = idError != null,
+            supportingText = { idError?.let { Text(it) } },
             modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
         )
 
         Button(
             onClick = {
                 val pid = participantIdText.toIntOrNull()
-                val valid = pid != null && ExperimentConfig.isValidParticipantId(pid)
-                participantError = !valid
-                if (valid) onNext(pid!!)
+                val normalizedName = participantNameText.lowercase().trim()
+                
+                // 1. Validation basics
+                if (participantNameText.isBlank()) {
+                    nameError = "Le nom ne peut pas être vide"
+                    return@Button
+                }
+                if (pid == null || !ExperimentConfig.isValidParticipantId(pid)) {
+                    idError = "L’ID doit être un nombre positif"
+                    return@Button
+                }
+
+                // 2. Strict Linkage Check: Is this name already linked to a DIFFERENT ID?
+                val existingIdForName = onLoadIdByName(participantNameText)
+                if (existingIdForName != null && existingIdForName != pid) {
+                    nameError = "Ce nom est déjà lié à l'ID $existingIdForName"
+                    return@Button
+                }
+
+                // 3. Strict Linkage Check: Is this ID already linked to a DIFFERENT Name?
+                val existingNameForId = onLoadName(pid)
+                if (existingNameForId.isNotBlank() && existingNameForId.lowercase().trim() != normalizedName) {
+                    idError = "Cet ID est déjà lié à $existingNameForId"
+                    return@Button
+                }
+
+                onNext(pid, participantNameText)
             },
             modifier = Modifier.fillMaxWidth().height(50.dp)
         ) {
@@ -234,6 +330,7 @@ private fun ParticipantIdScreen(
 @Composable
 private fun ModePickerScreen(
     participantId: Int,
+    participantName: String,
     onBack: () -> Unit,
     onPickMode: (String) -> Unit
 ) {
@@ -254,7 +351,7 @@ private fun ModePickerScreen(
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = "Participant $participantId",
+            text = if (participantName.isNotBlank()) "$participantName ($participantId)" else "Participant $participantId",
             style = MaterialTheme.typography.titleLarge,
             modifier = Modifier.padding(bottom = 24.dp)
         )
