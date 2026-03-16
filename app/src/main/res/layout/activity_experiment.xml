@@ -116,21 +116,21 @@
             android:layout_height="match_parent"
             android:visibility="gone" />
 
-        <TextView
-            android:id="@+id/trialsLeftTextView"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/trial_counter_format"
-            android:textSize="11sp"
-            android:textColor="@android:color/white"
-            android:background="#80000000"
-            android:padding="8dp"
-            android:visibility="gone"
-            android:layout_gravity="top|end"
-            android:layout_marginTop="16dp"
-            android:layout_marginEnd="16dp"/>
-
     </FrameLayout>
+
+    <!-- Trials counter at the very top of the right bar area -->
+    <TextView
+        android:id="@+id/trialsLeftTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/trial_counter_format"
+        android:textSize="14sp"
+        android:textColor="@android:color/black"
+        android:padding="16dp"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="@id/rightBar" />
 
     <LinearLayout
         android:id="@+id/rightBar"
@@ -143,6 +143,7 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
+        <!-- startButton is at the top of the LinearLayout -->
         <Button
             android:id="@+id/startButton"
             android:layout_width="wrap_content"
