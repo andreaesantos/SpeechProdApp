@@ -11,12 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -73,21 +68,29 @@ class ParticipantInputActivity : ComponentActivity() {
         return if (id != -1) id else null
     }
 
+    private fun getAllRegisteredNames(): List<String> {
+        val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+        return prefs.all.keys
+            .filter { it.startsWith(PREFIX_ID_MAPPING) }
+            .map { it.removePrefix(PREFIX_ID_MAPPING) }
+            .sorted()
+    }
+
     private fun saveParticipantInfo(id: Int, name: String) {
         val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
-        val existingName = prefs.getString(PREFIX_NAME_MAPPING + id, "") ?: ""
         val normalizedName = name.lowercase().trim()
+        val existingName = prefs.getString(PREFIX_NAME_MAPPING + id, "") ?: ""
 
         // If the name changed for this ID, reset decisions and progress
-        if (existingName.isNotBlank() && name.isNotBlank() && existingName != name) {
+        if (existingName.isNotBlank() && normalizedName.isNotBlank() && existingName != normalizedName) {
             DecisionStore(this).clearDecisions(id)
             VideoProgressStore(this).setLastCompletedIndex(id, -1)
         }
 
         prefs.edit {
             putInt(KEY_LAST_PARTICIPANT_ID, id)
-            if (name.isNotBlank()) {
-                putString(PREFIX_NAME_MAPPING + id, name)
+            if (normalizedName.isNotBlank()) {
+                putString(PREFIX_NAME_MAPPING + id, normalizedName)
                 putInt(PREFIX_ID_MAPPING + normalizedName, id)
             }
         }
@@ -130,6 +133,7 @@ class ParticipantInputActivity : ComponentActivity() {
                             initialParticipantId = lastPid,
                             onLoadName = { pid -> loadParticipantName(pid) },
                             onLoadIdByName = { name -> loadParticipantIdByName(name) },
+                            getRegisteredNames = { getAllRegisteredNames() },
                             onNext = { pid, name ->
                                 saveParticipantInfo(pid, name)
                                 participantId = pid
@@ -212,10 +216,14 @@ private fun ParticipantIdScreen(
     initialParticipantId: Int?,
     onLoadName: (Int) -> String,
     onLoadIdByName: (String) -> Int?,
+    getRegisteredNames: () -> List<String>,
     onNext: (Int, String) -> Unit
 ) {
     var participantIdText by rememberSaveable { mutableStateOf("") }
     var participantNameText by rememberSaveable { mutableStateOf("") }
+    var expanded by remember { mutableStateOf(false) }
+    val registeredNames = remember { getRegisteredNames() }
+    val isIdLocked = remember(participantNameText) {onLoadIdByName(participantNameText) != null}
 
     LaunchedEffect(initialParticipantId) {
         if (participantIdText.isBlank()) {
@@ -226,7 +234,7 @@ private fun ParticipantIdScreen(
             }
         }
     }
-    
+
     // Auto-load name when ID changes
     LaunchedEffect(participantIdText) {
         val pid = participantIdText.toIntOrNull()
@@ -263,37 +271,78 @@ private fun ParticipantIdScreen(
         )
 
         OutlinedTextField(
-            value = participantNameText,
-            onValueChange = { 
-                participantNameText = it
-                nameError = null
-                idError = null
-            },
-            label = { Text("Nom du participant") },
-            isError = nameError != null,
-            supportingText = { nameError?.let { Text(it) } },
-            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
-        )
-
-        OutlinedTextField(
             value = participantIdText,
             onValueChange = {
-                participantIdText = it
-                nameError = null
-                idError = null
+                if (!isIdLocked) {  // only allow editing if name is new
+                    participantIdText = it
+                    idError = null
+                }
             },
             label = { Text("Identifiant du participant (Numéro)") },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             isError = idError != null,
-            supportingText = { idError?.let { Text(it) } },
-            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+            supportingText = {
+                if (isIdLocked) Text("ID verrouillé pour ce participant")
+                else idError?.let { Text(it) }
+            },
+            enabled = !isIdLocked,  // greys out the field
+            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
         )
+
+        ExposedDropdownMenuBox(
+            expanded = expanded,
+            onExpandedChange = { /* Don't toggle on box click, only on icon or text change */ },
+            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+        ) {
+            OutlinedTextField(
+                value = participantNameText,
+                onValueChange = {
+                    participantNameText = it.lowercase()
+                    nameError = null
+                    idError = null
+                },
+                label = { Text("Nom du participant (minuscules)") },
+                isError = nameError != null,
+                supportingText = { nameError?.let { Text(it) } },
+                modifier = Modifier.fillMaxWidth().menuAnchor(),
+                trailingIcon = {
+                    IconButton(onClick = { expanded = !expanded }) {
+                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+                    }
+                },
+                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
+            )
+
+            val filteredOptions = if (participantNameText.isBlank()) {
+                registeredNames
+            } else {
+                registeredNames.filter { it.contains(participantNameText, ignoreCase = true) }
+            }
+            if (filteredOptions.isNotEmpty()) {
+                ExposedDropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false }
+                ) {
+                    filteredOptions.forEach { selectionOption ->
+                        DropdownMenuItem(
+                            text = { Text(text = selectionOption) },
+                            onClick = {
+                                participantNameText = selectionOption
+                                expanded = false
+                                nameError = null
+                                idError = null
+                            }
+                        )
+                    }
+                }
+            }
+        }
 
         Button(
             onClick = {
                 val pid = participantIdText.toIntOrNull()
                 val normalizedName = participantNameText.lowercase().trim()
-                
+
                 // 1. Validation basics
                 if (participantNameText.isBlank()) {
                     nameError = "Le nom ne peut pas être vide"
