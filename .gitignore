@@ -7,9 +7,10 @@
 /.idea/workspace.xml
 /.idea/navEditor.xml
 /.idea/assetWizardSettings.xml
-app/src/main/res/raw
+app/src/main/assets
+app/src/main/drawable
 app/src/*/assets
-app/src/*/res/raw
+app/src/*/res/drawable
 *.json
 app/src/main/storage
 .DS_Store
