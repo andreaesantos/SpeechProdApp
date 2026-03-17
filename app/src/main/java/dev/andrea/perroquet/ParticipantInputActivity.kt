@@ -52,6 +52,22 @@ class ParticipantInputActivity : ComponentActivity() {
         private const val KEY_LAST_PARTICIPANT_ID = "last_participant_id"
     }
 
+    private data class NavigationArgs(
+        val participantId: Int,
+        val date: String,
+        val runId: String,
+        val mode: String
+    )
+    private var pendingNavigationArgs: NavigationArgs? = null
+
+    private val requestAudioPermission = registerForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
+    ) { _ ->
+        val args = pendingNavigationArgs ?: return@registerForActivityResult
+        pendingNavigationArgs = null
+        startRecordingAndNavigate(args.participantId, args.date, args.runId, args.mode)
+    }
+
     private fun loadLastParticipantId(): Int? {
         val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
         return if (prefs.contains(KEY_LAST_PARTICIPANT_ID)) prefs.getInt(KEY_LAST_PARTICIPANT_ID, -1) else null
@@ -117,11 +133,28 @@ class ParticipantInputActivity : ComponentActivity() {
     }
 
     private fun navigateToInstructions(
-        participantId: Int,
-        date: String,
-        runId: String,
-        mode: String
+        participantId: Int, date: String, runId: String, mode: String
     ) {
+        if (androidx.core.content.ContextCompat.checkSelfPermission(
+                this, android.Manifest.permission.RECORD_AUDIO
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            startRecordingAndNavigate(participantId, date, runId, mode)
+        } else {
+            pendingNavigationArgs = NavigationArgs(participantId, date, runId, mode)
+            requestAudioPermission.launch(android.Manifest.permission.RECORD_AUDIO)
+        }
+    }
+
+    private fun startRecordingAndNavigate(
+        participantId: Int, date: String, runId: String, mode: String
+    ) {
+        ContinuousRecorder.start(
+            context       = this,
+            participantId = participantId,
+            date          = date,
+            runId         = runId
+        )
         val intent = Intent(this, InstructionActivity::class.java).apply {
             putExtra(EXTRA_PARTICIPANT_ID, participantId)
             putExtra(EXTRA_DATE, date)

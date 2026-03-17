@@ -1,5 +1,6 @@
 package dev.andrea.perroquet.usbserial
 
+import android.annotation.SuppressLint
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -95,6 +96,7 @@ class SerialPortHelper(private val context: Context) {
     }
 
     private val usbDetachReceiver = object : BroadcastReceiver() {
+        @SuppressLint("SuspiciousIndentation")
         override fun onReceive(context: Context, intent: Intent) {
             if (UsbManager.ACTION_USB_DEVICE_DETACHED == intent.action) {
                 val device = intent.getParcelableExtra<UsbDevice>(UsbManager.EXTRA_DEVICE)
@@ -337,8 +339,8 @@ class SerialPortHelper(private val context: Context) {
             dev.andrea.perroquet.logging.EventType.BLOCK_END -> TriggerCode.BLOCK_END
             dev.andrea.perroquet.logging.EventType.TRIAL_START -> TriggerCode.TRIAL_START
             dev.andrea.perroquet.logging.EventType.TRIAL_END -> TriggerCode.TRIAL_END
-            dev.andrea.perroquet.logging.EventType.VIDEO_START -> TriggerCode.VIDEO_START
-            dev.andrea.perroquet.logging.EventType.VIDEO_END -> TriggerCode.VIDEO_END
+            dev.andrea.perroquet.logging.EventType.STIMULUS_ONSET -> TriggerCode.VIDEO_START
+            dev.andrea.perroquet.logging.EventType.STIMULUS_OFFSET -> TriggerCode.VIDEO_END
             dev.andrea.perroquet.logging.EventType.FIXATION_START -> TriggerCode.FIXATION_START
             dev.andrea.perroquet.logging.EventType.FIXATION_END -> TriggerCode.FIXATION_END
             dev.andrea.perroquet.logging.EventType.RECORDING_START -> TriggerCode.RECORDING_START

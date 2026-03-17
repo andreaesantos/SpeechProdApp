@@ -89,7 +89,9 @@
     <FrameLayout
         android:id="@+id/experimentContentContainer"
         android:layout_width="0dp"
-        android:layout_height="match_parent"
+        android:layout_height="0dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toStartOf="@id/rightBar">
 
@@ -108,27 +110,27 @@
                 android:background="@android:color/white"
                 android:visibility="gone">
 
+                <ImageView
+                    android:id="@+id/imageView"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:visibility="gone" />
+
+                <TextView
+                    android:id="@+id/trialsLeftTextView"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/trial_counter_format"
+                    android:textSize="11sp"
+                    android:textColor="@android:color/white"
+                    android:background="#80000000"
+                    android:padding="8dp"
+                    android:visibility="gone"
+                    android:layout_gravity="top|end"
+                    android:layout_marginTop="16dp"
+                    android:layout_marginEnd="16dp"/>
+
             </FrameLayout>
-
-        <ImageView
-            android:id="@+id/imageView"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:visibility="gone" />
-
-        <TextView
-            android:id="@+id/trialsLeftTextView"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/trial_counter_format"
-            android:textSize="11sp"
-            android:textColor="@android:color/white"
-            android:background="#80000000"
-            android:padding="8dp"
-            android:visibility="gone"
-            android:layout_gravity="top|end"
-            android:layout_marginTop="16dp"
-            android:layout_marginEnd="16dp"/>
 
     </FrameLayout>
 

@@ -245,6 +245,9 @@ abstract class BaseExperimentActivity : AppCompatActivity() {
             Log.w(TAG, "Transitioning to $newState with low battery ($batteryLevel%)")
         }
 
+        if (oldState == newState) {
+            _experimentState.value = ExperimentState.IDLE
+        }
         _experimentState.value = newState
     }
 
