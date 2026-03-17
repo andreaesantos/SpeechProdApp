@@ -352,6 +352,22 @@ class ExperimentActivity : BaseExperimentActivity() {
                 hideSystemUI()
                 startNextTrial()
             }
+            ExperimentState.TRIAL_VIDEO -> {
+                // Clinical mode: Next pressed during image display — advance immediately
+                if (isClinical()) {
+                    imageTimeoutRunnable?.let { handler.removeCallbacks(it) }
+                    imageTimeoutRunnable = null
+                    imageView.visibility = View.GONE
+                    recordingContainer.visibility = View.GONE
+                    val fileName = imageQueue.getOrNull(resumeStartIndex + currentTrial - 1)
+                        ?.let { File(it).name } ?: "unknown"
+                    lifecycleScope.launch(Dispatchers.IO) {
+                        eventLogger.logVideoEvent(EventType.STIMULUS_OFFSET, null, currentTrial, fileName)
+                        serialPortHelper.sendEventTrigger(EventType.STIMULUS_OFFSET)
+                    }
+                    advanceAfterDecision()
+                }
+            }
             ExperimentState.EXPERIMENT_END -> finishAffinity()
             else -> { /* no-op */ }
         }
@@ -409,7 +425,6 @@ class ExperimentActivity : BaseExperimentActivity() {
         trialTextView.text = getString(R.string.trial_counter_format, currentTrial, totalTrials)
 
         exitButton.visibility = View.VISIBLE
-        exitButton.bringToFront()
 
         // Hide everything by default, then show what's needed per state
         if (state != ExperimentState.TRIAL_VIDEO) {
@@ -429,10 +444,15 @@ class ExperimentActivity : BaseExperimentActivity() {
                 trialsLeftTextView.visibility = View.VISIBLE
                 trialsLeftTextView.text = getString(R.string.trial_counter_format, current, total)
                 trialsLeftTextView.bringToFront()
-                exitButton.bringToFront()
                 reloadButton.visibility = if (clinical) View.GONE else View.VISIBLE
                 passButton.visibility = if (clinical) View.GONE else View.VISIBLE
                 failButton.visibility = if (clinical) View.GONE else View.VISIBLE
+
+                if (clinical) {
+                    nextButton.visibility = View.VISIBLE
+                    nextButton.isEnabled = true
+                    nextButton.text = getString(R.string.next)
+                }
             }
 
             ExperimentState.IDLE -> {
@@ -488,7 +508,7 @@ class ExperimentActivity : BaseExperimentActivity() {
                 startButton.visibility = View.GONE
             }
             else -> {
-                nextButton.visibility = View.GONE
+                if (!clinical) nextButton.visibility = View.GONE
                 startButton.visibility = View.GONE
             }
         }

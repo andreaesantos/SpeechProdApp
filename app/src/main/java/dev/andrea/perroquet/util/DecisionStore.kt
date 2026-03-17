@@ -42,6 +42,13 @@ class DecisionStore(
         participantFile(participantId).writeText(obj.toString())
     }
 
+    fun clearDecisions(participantId: Int) {
+        val f = participantFile(participantId)
+        if (f.exists()) {
+            f.delete()
+        }
+    }
+
     fun getPassedStimuli(participantId: Int): Set<String> =
         loadDecisionMap(participantId).filterValues { it == "PASS" }.keys
 
