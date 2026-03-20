@@ -312,6 +312,8 @@ class ExperimentActivity : BaseExperimentActivity() {
             }
 
             ExperimentState.EXPERIMENT_END -> {
+                ContinuousRecorder.stop()
+                eventLogger.logEvent(EventType.RECORDING_END)
                 finishAffinity()
             }
 
@@ -439,7 +441,7 @@ class ExperimentActivity : BaseExperimentActivity() {
                 eventLogger.saveEvents()
 
                 // Stop and save the continuous session recording
-                ContinuousRecorder.stop()
+                //ContinuousRecorder.stop()
 
                 progressStore.setLastCompletedIndex(participantId, -1)
                 nextButton.isEnabled = false
