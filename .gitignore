@@ -10,6 +10,7 @@
 app/src/main/res/raw
 app/src/*/assets
 app/src/main/res/drawables/drawable
+app/src/lepetitprince/res/drawable/scenes/*
 *.json
 app/src/main/storage
 .DS_Store

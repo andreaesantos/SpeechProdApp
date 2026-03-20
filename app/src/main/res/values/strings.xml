@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Reconnaissance</string>
+    <string name="app_name">Picture Naming</string>
     <string name="instruction_demo_description">Démo d’instructions montrant l’interface de l’expérience</string>
 
     <!-- Debug/status labels (si tu les affiches) -->
@@ -30,7 +30,7 @@
     <string name="aucune_video_restante">Aucune vidéo restante à exécuter</string>
     <string name="pret_a_commencer">Prêt(e) à commencer l’expérience</string>
     <string name="experience_terminee">Expérience terminée\n\nMerci de votre participation</string>
-    <string name="task_name">Reconnaissance</string>
+    <string name="task_name">Picture Naming Task</string>
 
 
     <!-- Buttons -->
