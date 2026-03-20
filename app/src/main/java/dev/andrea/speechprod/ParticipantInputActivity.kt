@@ -301,7 +301,7 @@ private fun ParticipantIdScreen(
                     nameError = null
                     idError = null
                 },
-                label = { Text("Nom du participant (minuscules)") },
+                label = { Text("Nom, Prenom du participant") },
                 isError = nameError != null,
                 supportingText = { nameError?.let { Text(it) } },
                 modifier = Modifier.fillMaxWidth().menuAnchor(),
