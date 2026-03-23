@@ -65,7 +65,7 @@ class FixationDelayTest {
         
         // Simulate the ExperimentActivity behavior by transitioning to SPEECH_RECORDING after 1000ms
         Thread.sleep(1000)
-        testExperimentActivity.testTransitionToState(ExperimentState.SPEECH_RECORDING)
+        testExperimentActivity.testTransitionToState(ExperimentState.SPEECH_PRODUCTION)
         
         // Verify the duration is approximately 1000ms (with some tolerance for test execution)
         val duration = testExperimentActivity.getFixationDuration()
@@ -84,7 +84,7 @@ class FixationDelayTest {
         assertEquals(ExperimentState.FIXATION_DELAY, testExperimentActivity.lastState)
         
         testExperimentActivity.resetLatch()
-        testExperimentActivity.testTransitionToState(ExperimentState.SPEECH_RECORDING)
-        assertEquals(ExperimentState.SPEECH_RECORDING, testExperimentActivity.lastState)
+        testExperimentActivity.testTransitionToState(ExperimentState.SPEECH_PRODUCTION)
+        assertEquals(ExperimentState.SPEECH_PRODUCTION, testExperimentActivity.lastState)
     }
 }
