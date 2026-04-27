@@ -24,6 +24,8 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.saveable.rememberSaveable
 import dev.andrea.speechprod.util.VideoProgressStore
 import androidx.core.content.edit
@@ -198,6 +200,10 @@ class ParticipantInputActivity : ComponentActivity() {
             date          = args.date,
             runId         = args.runId
         )
+
+        lifecycleScope.launch {
+            BeepHelper.playAlignmentBeeps()
+        }
 
         val intent = Intent(this, InstructionActivity::class.java).apply {
             putExtra(EXTRA_PARTICIPANT_ID, args.participantId)
