@@ -91,7 +91,21 @@ abstract class BaseExperimentActivity : AppCompatActivity() {
             }
         }
     }
-    
+
+    private val headsetReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            if (intent.action == Intent.ACTION_HEADSET_PLUG) {
+                val state = intent.getIntExtra("state", -1)
+                if (state == 1) { // headset plugged in
+                    Log.d(TAG, "Headset plugged in — forcing speaker output")
+                    val audioManager = getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
+                    audioManager.isSpeakerphoneOn = true
+                    audioManager.mode = android.media.AudioManager.MODE_IN_COMMUNICATION
+                }
+            }
+        }
+    }
+
     companion object {
         internal const val TAG = "BaseExperimentActivity"
     }
@@ -141,7 +155,10 @@ abstract class BaseExperimentActivity : AppCompatActivity() {
         try {
             val filter = IntentFilter(Intent.ACTION_BATTERY_CHANGED)
             registerReceiver(batteryReceiver, filter)
-            
+
+            val headsetFilter = IntentFilter(Intent.ACTION_HEADSET_PLUG)
+            registerReceiver(headsetReceiver, headsetFilter)
+
             // Check battery level at start
             val batteryStatus = registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
             if (batteryStatus != null) {
@@ -181,7 +198,12 @@ abstract class BaseExperimentActivity : AppCompatActivity() {
         } catch (e: Exception) {
             Log.e(TAG, "Error unregistering battery receiver: ${e.message}")
         }
-        
+        try {
+            unregisterReceiver(headsetReceiver)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error unregistering headset receiver: ${e.message}")
+        }
+
         releaseWakeLock()
         releasePlayer()
         super.onDestroy()
@@ -191,16 +213,24 @@ abstract class BaseExperimentActivity : AppCompatActivity() {
      * Initialize the ExoPlayer instance
      */
     private fun initializePlayer() {
+        val audioManager = getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
+        audioManager.isSpeakerphoneOn = true
+        audioManager.mode = android.media.AudioManager.MODE_IN_COMMUNICATION
+
         player = ExoPlayer.Builder(this)
             .build()
             .also { exo ->
+                // Force audio to speaker
+                audioManager.setStreamVolume(
+                    android.media.AudioManager.STREAM_VOICE_CALL,
+                    audioManager.getStreamMaxVolume(android.media.AudioManager.STREAM_VOICE_CALL),
+                    0
+                )
                 exo.addListener(object : Player.Listener {
-
                     override fun onPlaybackStateChanged(playbackState: Int) {
-                        Log.d(TAG, "Player state=$playbackState") // debug
+                        Log.d(TAG, "Player state=$playbackState")
                         if (playbackState == Player.STATE_ENDED) onVideoPlaybackEnded()
                     }
-
                     override fun onPlayerError(error: PlaybackException) {
                         Log.e(TAG, "ExoPlayer error: ${error.errorCodeName}", error)
                         onVideoError("ExoPlayer error: ${error.errorCodeName}")
@@ -326,7 +356,7 @@ abstract class BaseExperimentActivity : AppCompatActivity() {
             lifecycleScope.launch(Dispatchers.IO) {
                 try {
                     val logger = dev.andrea.speechprod.logging.EventLogger.getInstance()
-                    val eventType = dev.andrea.speechprod.logging.EventType.VIDEO_START
+                    val eventType = dev.andrea.speechprod.logging.EventType.STIMULUS_ONSET
                     logger.logVideoEvent(eventType, null, currentTrial, currentVideoName ?: "unknown")
 
                     val activity = this@BaseExperimentActivity as? ExperimentActivity
@@ -394,7 +424,7 @@ abstract class BaseExperimentActivity : AppCompatActivity() {
             lifecycleScope.launch(Dispatchers.IO) {
                 try {
                     val logger = dev.andrea.speechprod.logging.EventLogger.getInstance()
-                    val eventType = dev.andrea.speechprod.logging.EventType.VIDEO_END
+                    val eventType = dev.andrea.speechprod.logging.EventType.STIMULUS_OFFSET
                     
                     // Log the event
                     logger.logVideoEvent(

@@ -8,6 +8,7 @@ import android.content.IntentFilter
 import android.hardware.usb.UsbDevice
 import android.hardware.usb.UsbDeviceConnection
 import android.hardware.usb.UsbManager
+import android.os.Build
 import android.util.Log
 import androidx.core.content.ContextCompat
 import com.hoho.android.usbserial.driver.UsbSerialPort
@@ -28,7 +29,7 @@ class SerialPortHelper(private val context: Context) {
 
     companion object {
         private const val TAG = "SerialPortHelper"
-        private const val ACTION_USB_PERMISSION = "dev.lucy.momentsintime.USB_PERMISSION"
+        private const val ACTION_USB_PERMISSION = "dev.andrea.speechprod.USB_PERMISSION"
         private const val BAUD_RATE = 9600
 
         // Trigger codes for different event types
@@ -67,7 +68,7 @@ class SerialPortHelper(private val context: Context) {
             context,
             0,
         Intent(ACTION_USB_PERMISSION),
-            PendingIntent.FLAG_IMMUTABLE
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_ALLOW_UNSAFE_IMPLICIT_INTENT else PendingIntent.FLAG_MUTABLE
     )
 
     // USB permission and detach receivers
@@ -75,7 +76,13 @@ class SerialPortHelper(private val context: Context) {
         override fun onReceive(context: Context, intent: Intent) {
             if (ACTION_USB_PERMISSION == intent.action) {
                 synchronized(this) {
-                    val device = intent.getParcelableExtra<UsbDevice>(UsbManager.EXTRA_DEVICE)
+                    val device = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        intent.getParcelableExtra(UsbManager.EXTRA_DEVICE, UsbDevice::class.java)
+                    } else {
+                        @Suppress("DEPRECATION")
+                        intent.getParcelableExtra<UsbDevice>(UsbManager.EXTRA_DEVICE)
+                    }
+                    
                     if (intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)) {
                         device?.let {
                             Log.d(TAG, "USB permission granted for device: ${it.deviceName}")
@@ -93,8 +100,14 @@ class SerialPortHelper(private val context: Context) {
     private val usbDetachReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             if (UsbManager.ACTION_USB_DEVICE_DETACHED == intent.action) {
-                val device = intent.getParcelableExtra<UsbDevice>(UsbManager.EXTRA_DEVICE)
-                        device?.let {
+                val device = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    intent.getParcelableExtra(UsbManager.EXTRA_DEVICE, UsbDevice::class.java)
+                } else {
+                    @Suppress("DEPRECATION")
+                    intent.getParcelableExtra<UsbDevice>(UsbManager.EXTRA_DEVICE)
+                }
+                
+                device?.let {
                     if (it == usbDevice) {
                         Log.d(TAG, "USB device detached: ${it.deviceName}")
                         disconnect()
@@ -105,7 +118,7 @@ class SerialPortHelper(private val context: Context) {
     }
 
     init {
-        // Register receivers with RECEIVER_NOT_EXPORTED flag for Android U compatibility
+        // Register receivers
         val permissionFilter = IntentFilter(ACTION_USB_PERMISSION)
         ContextCompat.registerReceiver(
                 context,
@@ -131,11 +144,18 @@ class SerialPortHelper(private val context: Context) {
      * @return List of available USB devices
      */
     fun scanForDevices(): List<UsbDevice> {
+        // Debug: Log ALL USB devices first
+        val allDevices = usbManager.deviceList
+        Log.d(TAG, "Total USB devices connected: ${allDevices.size}")
+        allDevices.values.forEach { device ->
+            Log.d(TAG, "System sees USB device: ${device.deviceName} VID=${device.vendorId} PID=${device.productId}")
+        }
+
         val availableDrivers = CustomProber.getCustomProber().findAllDrivers(usbManager)
         val devices = mutableListOf<UsbDevice>()
 
         if (availableDrivers.isEmpty()) {
-            Log.d(TAG, "No USB serial devices found")
+            Log.d(TAG, "No USB serial devices with recognized drivers found")
             return devices
         }
 
@@ -143,7 +163,7 @@ class SerialPortHelper(private val context: Context) {
             val device = driver.device
             devices.add(device)
             Log.d(
-                    TAG, "Found USB device: ${device.deviceName}, " +
+                    TAG, "Found supported USB serial device: ${device.deviceName}, " +
                             "Product ID: ${device.productId}, " +
                             "Vendor ID: ${device.vendorId}")
         }
@@ -171,19 +191,14 @@ class SerialPortHelper(private val context: Context) {
      * @return true if a device was found and connection attempt started
      */
     fun connectToFirstAvailable(): Boolean {
-        val availableDrivers = CustomProber.getCustomProber().findAllDrivers(usbManager)
-
-        if (availableDrivers.isEmpty()) {
-            Log.d(TAG, "No USB serial devices found")
+        val devices = scanForDevices()
+        if (devices.isEmpty()) {
             _connectionState.value = ConnectionState.NO_DEVICES
             return false
         }
 
-        // Just use the first available driver
-        val driver = availableDrivers[0]
-        val device = driver.device
-
-        requestPermission(device)
+        // Just use the first available supported device
+        requestPermission(devices[0])
         return true
     }
 
@@ -208,9 +223,6 @@ class SerialPortHelper(private val context: Context) {
                 usbDevice = device
                 deviceAddress = device.deviceName
 
-                // Create a SerialSocket and connect using the SerialService
-                val availableDrivers = CustomProber.getCustomProber().findAllDrivers(usbManager)
-
                 val connection = usbManager.openDevice(device)
                 if (connection == null) {
                     Log.e(TAG, "Could not open connection to device: ${device.deviceName}")
@@ -222,32 +234,33 @@ class SerialPortHelper(private val context: Context) {
                 // Open the port and configure it
                 try {
                     port.open(connection)
-                    port.setParameters(9600, 8, UsbSerialPort.STOPBITS_1, UsbSerialPort.PARITY_NONE)
-                    port.dtr = true  // Enable DTR if needed for your device
-                    port.rts = true  // Enable RTS if needed for your device
+                    port.setParameters(BAUD_RATE, 8, UsbSerialPort.STOPBITS_1, UsbSerialPort.PARITY_NONE)
+                    port.dtr = true
+                    port.rts = true
 
-                    // Store the connection and port for later use
+                    // Store the connection and port
                     usbConnection = connection
                     usbSerialPort = port
 
-                    // Set up the serial I/O manager for background communication
+                    // Set up the serial I/O manager
                     setupSerialIoManager(port)
 
                     _connectionState.value = ConnectionState.CONNECTED
+                    Log.d(TAG, "Successfully connected to serial device")
 
                 } catch (e: IOException) {
+                    Log.e(TAG, "IOException opening port", e)
                     try {
                         port.close()
-                    } catch (e2: IOException) {
-                        // Ignore
-                    }
+                    } catch (e2: IOException) { }
+                    _connectionState.value = ConnectionState.ERROR
                 }
 
-                // Send a test byte to verify connection
+                // Send a test byte
                 sendTriggerCode(0)
 
             } catch (e: Exception) {
-                Log.e(TAG, "Error connecting to device: ${e.message}")
+                Log.e(TAG, "Error connecting to device: ${e.message}", e)
                 _connectionState.value = ConnectionState.CONNECTION_FAILED
             }
         }
@@ -256,14 +269,12 @@ class SerialPortHelper(private val context: Context) {
     /**
      * Initialize the serial service and listener
      */
-    // Set up the serial I/O manager for background communication
     private fun setupSerialIoManager(port: UsbSerialPort) {
         serialIoManager?.stop()
 
         serialIoManager =
             SerialInputOutputManager(port, object : SerialInputOutputManager.Listener {
                 override fun onNewData(data: ByteArray) {
-                    // Handle incoming data if needed
                     Log.d(TAG, "Received data: ${data.joinToString(", ") { it.toString() }}")
                 }
 
@@ -272,16 +283,25 @@ class SerialPortHelper(private val context: Context) {
                 }
             })
 
-        // Start the manager in a separate thread
-        (serialIoManager as? Runnable)?.let {
-            executor.submit(it)
-        }    }
+        serialIoManager?.start()
+    }
 
     /**
      * Disconnect from the current USB device
      */
     fun disconnect() {
         scope.launch {
+            serialIoManager?.stop()
+            serialIoManager = null
+            
+            try {
+                usbSerialPort?.close()
+            } catch (e: Exception) {}
+            usbSerialPort = null
+            
+            usbConnection?.close()
+            usbConnection = null
+            
             usbDevice = null
             deviceAddress = null
 
@@ -301,23 +321,19 @@ class SerialPortHelper(private val context: Context) {
             return false
         }
 
-        return try {
-            val buffer = byteArrayOf(code.toByte())
-
-            scope.launch {
-                try {
-                    usbSerialPort?.write(buffer, 1000)
+        scope.launch {
+            try {
+                usbSerialPort?.let { port ->
+                    val buffer = byteArrayOf(code.toByte())
+                    port.write(buffer, 1000)
                     Log.d(TAG, "Sent trigger code: $code")
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error sending trigger code: ${e.message}")
-                    _connectionState.value = ConnectionState.ERROR
                 }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error sending trigger code: ${e.message}")
+                // If it's a persistent error, we might want to update state
             }
-            true
-        } catch (e: Exception) {
-            Log.e(TAG, "Error preparing trigger code: ${e.message}")
-            false
         }
+        return true
     }
 
     /**
@@ -331,11 +347,11 @@ class SerialPortHelper(private val context: Context) {
             dev.andrea.speechprod.logging.EventType.EXPERIMENT_END -> TriggerCode.EXPERIMENT_END
             dev.andrea.speechprod.logging.EventType.TRIAL_START -> TriggerCode.TRIAL_START
             dev.andrea.speechprod.logging.EventType.TRIAL_END -> TriggerCode.TRIAL_END
-            dev.andrea.speechprod.logging.EventType.VIDEO_START -> TriggerCode.VIDEO_START
-            dev.andrea.speechprod.logging.EventType.VIDEO_END -> TriggerCode.VIDEO_END
+            dev.andrea.speechprod.logging.EventType.STIMULUS_ONSET -> TriggerCode.VIDEO_START
+            dev.andrea.speechprod.logging.EventType.STIMULUS_OFFSET -> TriggerCode.VIDEO_END
             dev.andrea.speechprod.logging.EventType.RECORDING_START -> TriggerCode.RECORDING_START
             dev.andrea.speechprod.logging.EventType.RECORDING_END -> TriggerCode.RECORDING_END
-            else -> return false // No trigger for other event types
+            else -> return false
         }
 
         Log.d(TAG, "Sending trigger code: $triggerCode for event: $eventType")
@@ -355,24 +371,6 @@ class SerialPortHelper(private val context: Context) {
         }
 
         disconnect()
-
-        // Detach listener and stop service
-        // Stop the I/O manager first
-        serialIoManager?.stop()
-        serialIoManager = null
-
-        usbSerialPort?.let {
-            try {
-                it.dtr = false
-                it.rts = false
-                it.close()
-            } catch (e: IOException) {
-                Log.e(TAG, "Error closing serial port", e)
-            }
-            usbSerialPort = null
-        }
-
-        usbConnection = null
     }
 
     /**
