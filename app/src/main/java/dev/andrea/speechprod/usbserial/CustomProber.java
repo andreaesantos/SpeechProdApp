@@ -34,7 +34,11 @@ public class CustomProber {
         // Add custom devices here
         customTable.addProduct(0x1234, 0xabcd, FtdiSerialDriver.class);      // Example custom device
         customTable.addProduct(0x0557, 0x2008, ProlificSerialDriver.class);  // Prolific device
-        
+
+        //
+        customTable.addProduct(VENDOR_PROLIFIC, 0x23A3, ProlificSerialDriver.class);
+        customTable.addProduct(0x022D, 0x07D8, ProlificSerialDriver.class);
+
         // Common Arduino devices
         customTable.addProduct(VENDOR_ARDUINO, 0x0043, CdcAcmSerialDriver.class);  // Arduino Uno
         customTable.addProduct(VENDOR_ARDUINO, 0x8036, CdcAcmSerialDriver.class);  // Arduino Leonardo
