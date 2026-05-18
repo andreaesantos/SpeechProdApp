@@ -32,6 +32,8 @@ import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 
 class ParticipantInputActivity : ComponentActivity() {
 
@@ -196,6 +198,10 @@ class ParticipantInputActivity : ComponentActivity() {
             date          = args.date,
             runId         = args.runId
         )
+
+        lifecycleScope.launch {
+            BeepHelper.playAlignmentBeeps()
+        }
 
         val intent = Intent(this, InstructionActivity::class.java).apply {
             putExtra(EXTRA_PARTICIPANT_ID, args.participantId)
