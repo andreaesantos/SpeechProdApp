@@ -378,7 +378,7 @@ class ExperimentActivity : BaseExperimentActivity() {
     private fun showExitConfirmDialog() {
         AlertDialog.Builder(this)
             .setTitle("Quitter l'expérience ?")
-            .setMessage("L'expérience va s'arrêter maintenant. Voulez-vous quitter ?")
+            .setMessage("L'expérience va s'arrêter maintenant. Voulez-vous quitter ? (N'oubliez pas de balayer vers le haut pour fermer l'application après avoir quitté")
             .setPositiveButton("Quitter") { _, _ -> exitExperimentNow() }
             .setNegativeButton("Annuler", null)
             .show()
