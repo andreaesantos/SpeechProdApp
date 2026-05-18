@@ -28,7 +28,7 @@
     <!-- Main content -->
     <string name="experiment_content_area">Zone de contenu de l’expérience</string>
     <string name="aucune_video_restante">Aucune vidéo restante à exécuter</string>
-    <string name="pret_a_commencer">Prêt(e) à commencer l’expérience</string>
+    <string name="pret_a_commencer">Veuillez débrancher et rebrancher le câble USB-C. Prêt(e) à commencer l’expérience.</string>
     <string name="experience_terminee">Expérience terminée\n\nMerci de votre participation</string>
     <string name="task_name">@string/app_name</string>
 
