@@ -417,7 +417,7 @@ private fun ModePickerScreen(
             modifier = Modifier.fillMaxWidth().height(70.dp)
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("Continuer l’expérience")
+                Text("Premier Essai / Continuer l’expérience")
                 Text(
                     text = "Reprendre là où vous vous êtes arrêté(e)",
                     style = MaterialTheme.typography.bodySmall
