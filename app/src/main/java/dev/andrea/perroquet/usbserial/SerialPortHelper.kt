@@ -34,7 +34,7 @@ class SerialPortHelper(private val context: Context) {
 
         // Trigger codes for different event types
         object TriggerCode {
-            const val EXPERIMENT_START = 1
+            const val EXPERIMENT_START = 101
             const val EXPERIMENT_END = 200
             const val BLOCK_START = 10
             const val BLOCK_END = 15
