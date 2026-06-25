@@ -1,4 +1,4 @@
-package dev.andrea.perroquet.util
+package dev.andrea.speechprod.util
 
 import android.content.Context
 import java.io.File
@@ -6,18 +6,41 @@ import java.io.File
 object RunStore {
 
     /**
-     * Example path:
-     * /Android/data/<pkg>/files/runs/p_12/2026-01-02/run_20260102_134512_123/
+     * Generates a flattened folder structure matching your target layout precisely:
+     * /Android/data/<pkg>/files/participants/pYYMMDD/runs/run_<runNumber>/
      */
     fun getOrCreateRunDir(
         context: Context,
-        participantId: Int,
-        date: String,
-        runId: String
+        participantId: Int, // FIXED: Reverted to Int to match the app's standard type
+        runNumber: String   // Your timestamp/identifier string
     ): File {
-        val base = File(context.getExternalFilesDir(null), "runs")
-        val dir = File(base, "p_$participantId/$date/run_$runId")
-        if (!dir.exists()) dir.mkdirs()
-        return dir
+        val baseDir = context.getExternalFilesDir(null) ?: context.filesDir
+
+        // FLATTENED: Removed /tasks/<shorthand>/ levels entirely
+        val participantFolder = File(File(baseDir, "participants"), "p$participantId")
+        val runsFolder = File(participantFolder, "runs")
+        val runDir = File(runsFolder, "run_$runNumber")
+
+        if (!runDir.exists()) {
+            runDir.mkdirs()
+        }
+
+        return runDir
+    }
+
+    /**
+     * Finds the parent directory where your decisions JSON should sit.
+     * Maps to: /Android/data/<pkg>/files/participants/pYYMMDD/
+     */
+    fun getOrCreateDecisionsDir(context: Context, participantId: Int): File {
+        val baseDir = context.getExternalFilesDir(null) ?: context.filesDir
+
+        // FLATTENED: Decisions sit right at the parent level, next to the "runs" folder
+        val participantFolder = File(File(baseDir, "participants"), "p$participantId")
+
+        if (!participantFolder.exists()) {
+            participantFolder.mkdirs()
+        }
+        return participantFolder
     }
 }
