@@ -90,16 +90,11 @@ class EventLogger private constructor(
     private fun getTriggerCodeForType(type: EventType): Int? {
         return when (type) {
             EventType.EXPERIMENT_START -> when (BuildConfig.FLAVOR) {
-                "conversational" -> 11
-                "auditorynaming" -> 12
-                "wordrepetition" -> 13
+                "conversational" -> 102
+                "auditorynaming" -> 103
+                "wordrepetition" -> 104
+                "nonwordrepetition" -> 105
                 else             -> 1
-            }
-            EventType.EXPERIMENT_END -> when (BuildConfig.FLAVOR) {
-                "conversational" -> 211
-                "auditorynaming" -> 212
-                "wordrepetition" -> 213
-                else             -> 200
             }
             EventType.TRIAL_START     -> 20
             EventType.TRIAL_END       -> 25
