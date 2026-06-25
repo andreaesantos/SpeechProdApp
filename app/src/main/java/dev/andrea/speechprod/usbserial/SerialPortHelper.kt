@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.io.IOException
 import java.util.concurrent.Executors
+import dev.andrea.speechprod.BuildConfig
 
 /**
  * Helper class for managing USB serial port connections and sending trigger codes
@@ -343,8 +344,25 @@ class SerialPortHelper(private val context: Context) {
      */
     fun sendEventTrigger(eventType: dev.andrea.speechprod.logging.EventType): Boolean {
         val triggerCode = when (eventType) {
-            dev.andrea.speechprod.logging.EventType.EXPERIMENT_START -> TriggerCode.EXPERIMENT_START
-            dev.andrea.speechprod.logging.EventType.EXPERIMENT_END -> TriggerCode.EXPERIMENT_END
+            dev.andrea.speechprod.logging.EventType.EXPERIMENT_START -> {
+                // Dynamically change code based on build flavor
+                when (BuildConfig.FLAVOR) {
+                    "conversational" -> 11
+                    "auditorynaming" -> 12
+                    "wordrepetition" -> 13
+                    "nonwordrepetition" -> 14
+                    else             -> TriggerCode.EXPERIMENT_START // Fallback to 1
+                }
+            }
+            dev.andrea.speechprod.logging.EventType.EXPERIMENT_END -> {
+                // Dynamically change code based on build flavor
+                when (BuildConfig.FLAVOR) {
+                    "conversational" -> 211
+                    "auditorynaming" -> 212
+                    "wordrepetition" -> 213
+                    else             -> TriggerCode.EXPERIMENT_END // Fallback to 200
+                }
+            }
             dev.andrea.speechprod.logging.EventType.TRIAL_START -> TriggerCode.TRIAL_START
             dev.andrea.speechprod.logging.EventType.TRIAL_END -> TriggerCode.TRIAL_END
             dev.andrea.speechprod.logging.EventType.STIMULUS_ONSET -> TriggerCode.VIDEO_START
@@ -354,7 +372,7 @@ class SerialPortHelper(private val context: Context) {
             else -> return false
         }
 
-        Log.d(TAG, "Sending trigger code: $triggerCode for event: $eventType")
+        Log.d(TAG, "Sending flavor-aware trigger code: $triggerCode for event: $eventType (Flavor: ${BuildConfig.FLAVOR})")
 
         return sendTriggerCode(triggerCode)
     }

@@ -9,10 +9,15 @@ class DecisionStore(
     private val datasetKey: String = "perroquet_video_list" // matches the raw csv name
 ) {
     private fun participantFile(participantId: Int): File {
-        val dir = File(context.getExternalFilesDir(null), "decisions").apply { mkdirs() }
-        return File(dir, "${datasetKey}_passfail_p$participantId.json")
-    }
+        val baseDir = context.getExternalFilesDir(null) ?: context.filesDir
+        val participantsDir = File(baseDir, "participants")
+        val participantFolder = File(participantsDir, "p$participantId")
 
+        participantFolder.mkdirs()
+
+        // This places the file right at the parent layer alongside the "runs" folder
+        return File(participantFolder, "${datasetKey}_passfail_p$participantId.json")
+    }
     /** Map videoName -> "PASS"/"FAIL" (latest wins) */
     fun loadDecisionMap(participantId: Int): MutableMap<String, String> {
         val f = participantFile(participantId)

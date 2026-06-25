@@ -12,12 +12,9 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.io.File
 import java.io.FileWriter
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 import java.util.concurrent.CopyOnWriteArrayList
 import dev.andrea.speechprod.util.RunStore
-
+import dev.andrea.speechprod.BuildConfig // FIXED: Imported build config for flavor tracking
 
 /**
  * Event data class for logging experiment events
@@ -26,6 +23,7 @@ data class ExperimentEvent(
     val absoluteTime: Long = System.currentTimeMillis(),
     val relativeTime: Long,
     val type: EventType,
+    val triggerCode: Int? = null, // FIXED: Added flavor-aware trigger code mapping field
     val blockNumber: Int? = null,
     val trialNumber: Int? = null,
     val videoName: String? = null,
@@ -67,10 +65,8 @@ class EventLogger private constructor(
     private val gson: Gson = GsonBuilder().setPrettyPrinting().create()
 
     private var participantId: Int = -1
-
     private var runId: String = ""
     private var sessionDate: String = ""
-
 
     companion object {
         private const val TAG = "EventLogger"
@@ -85,6 +81,33 @@ class EventLogger private constructor(
 
         fun getInstance(): EventLogger {
             return instance ?: throw IllegalStateException("EventLogger not initialized")
+        }
+    }
+
+    /**
+     * Helper mapping method to get the correct trigger code per flavor.
+     */
+    private fun getTriggerCodeForType(type: EventType): Int? {
+        return when (type) {
+            EventType.EXPERIMENT_START -> when (BuildConfig.FLAVOR) {
+                "conversational" -> 11
+                "auditorynaming" -> 12
+                "wordrepetition" -> 13
+                else             -> 1
+            }
+            EventType.EXPERIMENT_END -> when (BuildConfig.FLAVOR) {
+                "conversational" -> 211
+                "auditorynaming" -> 212
+                "wordrepetition" -> 213
+                else             -> 200
+            }
+            EventType.TRIAL_START     -> 20
+            EventType.TRIAL_END       -> 25
+            EventType.STIMULUS_ONSET  -> 30
+            EventType.STIMULUS_OFFSET -> 35
+            EventType.RECORDING_START -> 50
+            EventType.RECORDING_END   -> 55
+            else                      -> null
         }
     }
 
@@ -106,11 +129,11 @@ class EventLogger private constructor(
             events.add(
                 ExperimentEvent(
                     type = type,
+                    triggerCode = getTriggerCodeForType(type),
                     relativeTime = SystemClock.elapsedRealtime() - experimentStartTime
                 ))
             Log.d(TAG, "Logged event: $type")
 
-            // Save after certain important events
             if (type in listOf(
                     EventType.ERROR,
                     EventType.BATTERY_WARNING,
@@ -120,7 +143,6 @@ class EventLogger private constructor(
             ) {
                 saveEvents(is_intermediate = true)
             }
-
         }
     }
 
@@ -132,6 +154,7 @@ class EventLogger private constructor(
             events.add(
                 ExperimentEvent(
                     type = EventType.STATE_CHANGE,
+                    triggerCode = getTriggerCodeForType(EventType.STATE_CHANGE),
                     state = state,
                     relativeTime = SystemClock.elapsedRealtime() - experimentStartTime
                 )
@@ -148,6 +171,7 @@ class EventLogger private constructor(
             events.add(
                 ExperimentEvent(
                     type = type,
+                    triggerCode = getTriggerCodeForType(type),
                     blockNumber = blockNumber,
                     trialNumber = trialNumber,
                     relativeTime = SystemClock.elapsedRealtime() - experimentStartTime
@@ -165,6 +189,7 @@ class EventLogger private constructor(
             events.add(
                 ExperimentEvent(
                     type = type,
+                    triggerCode = getTriggerCodeForType(type),
                     blockNumber = blockNumber,
                     trialNumber = trialNumber,
                     videoName = videoName,
@@ -188,6 +213,7 @@ class EventLogger private constructor(
             events.add(
                 ExperimentEvent(
                     type = type,
+                    triggerCode = getTriggerCodeForType(type),
                     blockNumber = blockNumber,
                     trialNumber = trialNumber,
                     audioFileName = audioFileName,
@@ -196,11 +222,7 @@ class EventLogger private constructor(
             )
             Log.d(TAG, "Logged recording event: $type, block: $blockNumber, trial: $trialNumber, file: $audioFileName")
 
-            // save intermediate events
-            if (type in listOf(
-                    EventType.RECORDING_END
-                )
-            ) {
+            if (type in listOf(EventType.RECORDING_END)) {
                 saveEvents(is_intermediate = true)
             }
         }
@@ -214,12 +236,13 @@ class EventLogger private constructor(
             events.add(
                 ExperimentEvent(
                     type = EventType.ERROR,
+                    triggerCode = getTriggerCodeForType(EventType.ERROR),
                     relativeTime = SystemClock.elapsedRealtime() - experimentStartTime,
                     details = details?.plus("message" to message) ?: mapOf("message" to message)
                 )
             )
             Log.e(TAG, "Logged error: $message")
-            saveEvents(is_intermediate = true) // Always save immediately on errors
+            saveEvents(is_intermediate = true)
         }
     }
 
@@ -243,7 +266,6 @@ class EventLogger private constructor(
                     }
                     val logFile = File(logsDir, fileName)
 
-                    // Create a copy of events to avoid concurrent modification
                     val eventsCopy = ArrayList(events)
 
                     FileWriter(logFile).use { writer ->
@@ -260,15 +282,11 @@ class EventLogger private constructor(
         }
     }
 
-    /**
-     * Ensure the logs directory exists
-     */
     private fun ensureLogsDirectory(): File {
         val runDir = RunStore.getOrCreateRunDir(
             context = context,
             participantId = participantId,
-            date = sessionDate,
-            runId = runId
+            runNumber = runId
         )
         val logsDir = File(runDir, "logs")
 
@@ -282,15 +300,11 @@ class EventLogger private constructor(
         return logsDir
     }
 
-    /**
-     * Get the audio directory
-     */
     fun getAudioDirectory(): File {
         val runDir = RunStore.getOrCreateRunDir(
             context = context,
             participantId = participantId,
-            date = sessionDate,
-            runId = runId
+            runNumber = runId
         )
         val audioDir = File(runDir, "audio")
 
@@ -304,9 +318,6 @@ class EventLogger private constructor(
         return audioDir
     }
 
-    /**
-     * Clear all events (typically after saving)
-     */
     fun clearEvents() {
         events.clear()
         Log.d(TAG, "Cleared all events")

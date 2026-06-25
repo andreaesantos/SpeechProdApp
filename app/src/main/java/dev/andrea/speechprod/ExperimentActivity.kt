@@ -140,7 +140,11 @@ class ExperimentActivity : BaseExperimentActivity() {
             }
         }
 
-        val runDir = RunStore.getOrCreateRunDir(this, participantId, dateString, runId)
+        val runDir = RunStore.getOrCreateRunDir(
+            context = this, // or 'context' depending on what's available there
+            participantId = participantId,
+            runNumber = runId
+        )
         val logDir = File(runDir, "logs").apply { mkdirs() }
 
         val allVideos = videoLoader.loadVideosInOrder()

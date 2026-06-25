@@ -34,7 +34,7 @@ object ContinuousRecorder {
         recorder  = AudioRecorder(context.applicationContext)
         isRunning = true
 
-        val fileName = "session_P${participantId}_${date}_run_${runId}.wav"
+        val fileName = "session_p${participantId}_${date}_run_${runId}.wav"
         Log.d(TAG, "Starting → $fileName  participant=$participantId  runId=$runId")
 
         recorder!!.startSessionRecording(
