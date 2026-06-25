@@ -308,8 +308,7 @@ class EventLogger private constructor(
         val runDir = RunStore.getOrCreateRunDir(
             context = context,
             participantId = participantId,
-            date = sessionDate,
-            runId = runId
+            runNumber = runId
         )
         val logsDir = File(runDir, "logs")
 
@@ -330,8 +329,7 @@ class EventLogger private constructor(
         val runDir = RunStore.getOrCreateRunDir(
             context = context,
             participantId = participantId,
-            date = sessionDate,
-            runId = runId
+            runNumber = runId
         )
         val audioDir = File(runDir, "audio")
 

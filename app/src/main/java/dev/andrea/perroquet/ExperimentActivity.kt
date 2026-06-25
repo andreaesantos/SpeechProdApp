@@ -121,7 +121,11 @@ class ExperimentActivity : BaseExperimentActivity() {
             }
         }
 
-        val runDir = RunStore.getOrCreateRunDir(this, participantId, dateString, runId)
+        val runDir = RunStore.getOrCreateRunDir(
+            context = this,
+            participantId = participantId,
+            runNumber = runId
+        )
         val logDir = File(runDir, "logs").apply { mkdirs() }
 
         val allImages = stimuliLoader.loadStimuliInOrder()
