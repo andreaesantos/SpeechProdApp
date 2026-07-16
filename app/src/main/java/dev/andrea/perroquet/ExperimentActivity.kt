@@ -620,7 +620,7 @@ class ExperimentActivity : BaseExperimentActivity() {
     private fun recordDecision(decision: String) {
         val imageName = imageQueue.getOrNull(resumeStartIndex + currentTrial - 1)
             ?.let { File(it).name } ?: "unknown"
-        decisionStore.setDecision(participantId, imageName, decision)
+        decisionStore.setDecision(participantId, runId, imageName, decision)
         Log.i("Decision", "participant=$participantId decision=$decision image=$imageName")
     }
 
