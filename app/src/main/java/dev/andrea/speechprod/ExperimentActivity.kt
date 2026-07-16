@@ -601,6 +601,17 @@ class ExperimentActivity : BaseExperimentActivity() {
             p.seekTo(0)
             p.play()
             Log.d(TAG, "Reloaded current video (seekTo 0)")
+            lifecycleScope.launch(Dispatchers.IO) {
+                try {
+                    eventLogger.logVideoEvent(
+                        dev.andrea.speechprod.logging.EventType.STIMULUS_ONSET,
+                        null, currentTrial, currentVideoId()
+                    )
+                    serialPortHelper.sendEventTrigger(dev.andrea.speechprod.logging.EventType.STIMULUS_ONSET)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error logging reload onset: ${e.message}")
+                }
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to reload current video: ${e.message}", e)
             Toast.makeText(this, getString(R.string.impossible_recharger_video), Toast.LENGTH_SHORT).show()
