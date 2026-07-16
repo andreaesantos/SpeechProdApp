@@ -195,6 +195,7 @@ class ExperimentActivity : BaseExperimentActivity() {
         startButton.visibility = View.GONE
 
         eventLogger = EventLogger.initialize(this, this.experimentStartTime, logDir)
+        eventLogger.clearEvents()
         eventLogger.setExperimentInfo(participantId, dateString, runId)
 
         serialPortHelper = SerialPortHelper(this)
