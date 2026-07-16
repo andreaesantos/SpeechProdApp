@@ -737,7 +737,7 @@ class ExperimentActivity : BaseExperimentActivity() {
 
     private fun recordDecision(decision: String) {
         val videoName = currentVideoId()
-        decisionStore.setDecision(participantId, videoName, decision)
+        decisionStore.setDecision(participantId, runId, videoName, decision)
         Log.i("Decision", "participant=$participantId decision=$decision video=$videoName")
     }
 
