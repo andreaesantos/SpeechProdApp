@@ -313,7 +313,8 @@ class EventLogger private constructor(
         return audioDir
     }
 
-    fun clearEvents() {
+    fun
+            clearEvents() {
         events.clear()
         Log.d(TAG, "Cleared all events")
     }
