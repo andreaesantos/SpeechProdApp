@@ -16,25 +16,21 @@ object FallbackParticipantIdGenerator {
     
     /**
      * Generates a unique fallback participant ID based on current date and time.
-     * Uses IDs in the 900000000-999999999 range to distinguish from real participant IDs.
-     * Example: 920260528 (derived from timestamp)
+     * Format: YYYYMMDDHHmmssSSS as an Int (direct conversion from timestamp string)
+     * Example: 20260528160406419
      * 
      * This ensures:
      * - Each session with missing participantID gets a unique identifier
      * - Sessions cannot share progress through SharedPreferences
-     * - The ID is easily identifiable as a fallback (900000000+ range)
+     * - The ID is traceable to when it occurred from its numeric value
      * - Each error session is completely isolated
      */
     fun generateUniqueId(): Int {
-        // Create a hash of the timestamp to get a unique but deterministic integer
         val now = LocalDateTime.now()
         val formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS")
         val timestamp = now.format(formatter)
-        val hash = timestamp.hashCode()
-        
-        // Ensure it's positive and starts with a marker that indicates it's fallback
-        // Use 900000000 + (hash % 99999999) to create IDs in the 900000000-999999999 range
-        val fallbackId = 900000000 + (Math.abs(hash) % 99999999)
+        // Convert timestamp string directly to Int
+        val fallbackId = timestamp.toInt()
         
         Log.w(TAG, "Generated fallback participantID: $fallbackId (timestamp: $timestamp)")
         return fallbackId
