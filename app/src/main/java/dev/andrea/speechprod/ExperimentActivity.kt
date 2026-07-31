@@ -30,6 +30,7 @@ import dev.andrea.speechprod.usbserial.SerialPortHelper
 import dev.andrea.speechprod.util.SessionVideoLoader
 import dev.andrea.speechprod.util.VideoProgressStore
 import dev.andrea.speechprod.util.RunStore
+import dev.andrea.speechprod.util.FallbackParticipantIdGenerator
 
 
 class ExperimentActivity : BaseExperimentActivity() {
@@ -123,7 +124,14 @@ class ExperimentActivity : BaseExperimentActivity() {
 
         hideSystemUI()
 
-        participantId = intent.getIntExtra(ParticipantInputActivity.EXTRA_PARTICIPANT_ID, -1)
+        val hasParticipantIdExtra = intent.hasExtra(ParticipantInputActivity.EXTRA_PARTICIPANT_ID)
+        val intentParticipantId = intent.getIntExtra(ParticipantInputActivity.EXTRA_PARTICIPANT_ID, -1)
+        participantId = FallbackParticipantIdGenerator.getSafeParticipantId(intentParticipantId, hasParticipantIdExtra)
+        
+        if (!hasParticipantIdExtra || participantId != intentParticipantId) {
+            Log.w("ExperimentActivity", "Using fallback or modified participantID: $participantId (intent had: $intentParticipantId, extra present: $hasParticipantIdExtra)")
+        }
+
         dateString = intent.getStringExtra(ParticipantInputActivity.EXTRA_DATE) ?: LocalDate.now().toString()
         runId = intent.getStringExtra(ParticipantInputActivity.EXTRA_RUN_ID) ?: java.util.UUID.randomUUID().toString()
 

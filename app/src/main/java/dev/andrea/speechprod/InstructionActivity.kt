@@ -7,6 +7,8 @@ import android.widget.Button
 import androidx.appcompat.app.AppCompatActivity
 import java.time.LocalDate
 import java.util.UUID
+import dev.andrea.speechprod.util.FallbackParticipantIdGenerator
+import android.util.Log
 
 class InstructionActivity : AppCompatActivity() {
 
@@ -20,7 +22,14 @@ class InstructionActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_instruction)
 
-        participantId = intent.getIntExtra(ParticipantInputActivity.EXTRA_PARTICIPANT_ID, -1)
+        val hasParticipantIdExtra = intent.hasExtra(ParticipantInputActivity.EXTRA_PARTICIPANT_ID)
+        val intentParticipantId = intent.getIntExtra(ParticipantInputActivity.EXTRA_PARTICIPANT_ID, -1)
+        participantId = FallbackParticipantIdGenerator.getSafeParticipantId(intentParticipantId, hasParticipantIdExtra)
+        
+        if (!hasParticipantIdExtra || participantId != intentParticipantId) {
+            Log.w("InstructionActivity", "Using fallback or modified participantID: $participantId (intent had: $intentParticipantId, extra present: $hasParticipantIdExtra)")
+        }
+
         dateString = intent.getStringExtra(ParticipantInputActivity.EXTRA_DATE) ?: LocalDate.now().toString()
         runId = intent.getStringExtra(ParticipantInputActivity.EXTRA_RUN_ID) ?: UUID.randomUUID().toString()
         mode = intent.getStringExtra(ParticipantInputActivity.EXTRA_MODE) ?: ParticipantInputActivity.MODE_FULL
