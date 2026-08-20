@@ -391,6 +391,10 @@ class ExperimentActivity : BaseExperimentActivity() {
         if (wasReloadingTrial) {
             isReloadingTrial = false
         } else {
+            if (state == ExperimentState.TRIAL_VIDEO) {
+                eventLogger.logEvent(EventType.TRIAL_START)
+                serialPortHelper.sendEventTrigger(EventType.TRIAL_START)
+            }
             super.onStateChanged(state)
         }
 
@@ -424,7 +428,6 @@ class ExperimentActivity : BaseExperimentActivity() {
         when (state) {
 
             ExperimentState.TRIAL_VIDEO -> {
-                if (!wasReloadingTrial) eventLogger.logEvent(EventType.TRIAL_START)
                 if (playerView.player == null && player != null) {
                     playerView.player = player
                 }
