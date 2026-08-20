@@ -358,7 +358,7 @@ class ExperimentActivity : BaseExperimentActivity() {
             ContinuousRecorder.stop()
 
             try {
-                eventLogger.logEvent(EventType.EXPERIMENT_ABORTED)
+                eventLogger.logEvent(EventType.EXPERIMENT_ENDED)
                 eventLogger.saveEvents(true)
             } catch (_: Exception) {}
 
@@ -447,9 +447,10 @@ class ExperimentActivity : BaseExperimentActivity() {
             }
 
             ExperimentState.EXPERIMENT_END -> {
-                eventLogger.logEvent(EventType.EXPERIMENT_END)
+                eventLogger.logEvent(EventType.EXPERIMENT_ENDED)
+                eventLogger.logEvent(EventType.PROTOCOL_FINISHED)
                 lifecycleScope.launch(Dispatchers.IO) {
-                    serialPortHelper.sendEventTrigger(EventType.EXPERIMENT_END)
+                    serialPortHelper.sendEventTrigger(EventType.EXPERIMENT_ENDED)
                 }
                 eventLogger.saveEvents()
 

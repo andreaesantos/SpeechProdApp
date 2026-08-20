@@ -38,6 +38,8 @@ data class ExperimentEvent(
 enum class EventType {
     EXPERIMENT_START,
     EXPERIMENT_END,
+    EXPERIMENT_ENDED,
+    PROTOCOL_FINISHED,
     TRIAL_START,
     TRIAL_END,
     STIMULUS_ONSET,
@@ -96,6 +98,7 @@ class EventLogger private constructor(
                 "nonwordrepetition" -> 105
                 else             -> 1
             }
+            EventType.EXPERIMENT_ENDED -> 200
             EventType.TRIAL_START     -> 20
             EventType.TRIAL_END       -> 25
             EventType.STIMULUS_ONSET  -> 30
