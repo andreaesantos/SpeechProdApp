@@ -23,6 +23,7 @@ import dev.andrea.speechprod.util.DecisionStore
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
@@ -229,7 +230,8 @@ private fun ParticipantIdScreen(
     var participantNameText by rememberSaveable { mutableStateOf("") }
     var expanded by remember { mutableStateOf(false) }
     val registeredNames = remember { getRegisteredNames() }
-    val isIdLocked = remember(participantNameText) {onLoadIdByName(participantNameText) != null}
+    val isIdLocked = remember(participantNameText) { onLoadIdByName(participantNameText) != null }
+    var idFieldFocused by remember { mutableStateOf(false) }
 
     LaunchedEffect(initialParticipantId) {
         if (participantIdText.isBlank()) {
@@ -237,27 +239,6 @@ private fun ParticipantIdScreen(
             if (pid != null) {
                 participantIdText = pid.toString()
                 participantNameText = onLoadName(pid)
-            }
-        }
-    }
-
-    // Auto-load name when ID changes
-    LaunchedEffect(participantIdText) {
-        val pid = participantIdText.toIntOrNull()
-        if (pid != null && ExperimentConfig.isValidParticipantId(pid)) {
-            val name = onLoadName(pid)
-            if (name.isNotBlank()) {
-                participantNameText = name
-            }
-        }
-    }
-
-    // Auto-load ID when name changes
-    LaunchedEffect(participantNameText) {
-        if (participantNameText.isNotBlank()) {
-            val pid = onLoadIdByName(participantNameText)
-            if (pid != null) {
-                participantIdText = pid.toString()
             }
         }
     }
@@ -291,8 +272,20 @@ private fun ParticipantIdScreen(
                 if (isIdLocked) Text("ID verrouillé pour ce participant")
                 else idError?.let { Text(it) }
             },
-            enabled = !isIdLocked,  // greys out the field
-            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+            enabled = !isIdLocked,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 8.dp)
+                .onFocusChanged { focusState ->
+                    if (!focusState.isFocused && idFieldFocused) {
+                        val pid = participantIdText.toIntOrNull()
+                        if (pid != null && ExperimentConfig.isValidParticipantId(pid)) {
+                            val name = onLoadName(pid)
+                            if (name.isNotBlank()) participantNameText = name
+                        }
+                    }
+                    idFieldFocused = focusState.isFocused
+                }
         )
 
         ExposedDropdownMenuBox(
@@ -334,6 +327,8 @@ private fun ParticipantIdScreen(
                             text = { Text(text = selectionOption) },
                             onClick = {
                                 participantNameText = selectionOption
+                                val pid = onLoadIdByName(selectionOption)
+                                if (pid != null) participantIdText = pid.toString()
                                 expanded = false
                                 nameError = null
                                 idError = null
