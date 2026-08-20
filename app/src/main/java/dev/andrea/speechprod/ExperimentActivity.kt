@@ -291,6 +291,9 @@ class ExperimentActivity : BaseExperimentActivity() {
      * No recording callback chain needed — ContinuousRecorder runs independently.
      */
     private fun advanceToNextTrial() {
+        eventLogger.logEvent(EventType.TRIAL_END)
+        serialPortHelper.sendEventTrigger(EventType.TRIAL_END)
+
         recordingBgRunnable?.let { handler.removeCallbacks(it) }
         recordingBgRunnable = null
 
@@ -433,7 +436,6 @@ class ExperimentActivity : BaseExperimentActivity() {
             }
 
             ExperimentState.SPEECH_PRODUCTION -> {
-                // Just handle UI.
                 runOnUiThread {
                     recordingContainer.visibility = View.VISIBLE
                     if (!isAuditoryNamingFlavor()) {
@@ -449,8 +451,6 @@ class ExperimentActivity : BaseExperimentActivity() {
                     recordingBgRunnable = r
                     handler.postDelayed(r, RECORDING_BLACK_MS)
                 }
-
-                eventLogger.logEvent(EventType.TRIAL_END)
             }
 
             ExperimentState.EXPERIMENT_END -> {
