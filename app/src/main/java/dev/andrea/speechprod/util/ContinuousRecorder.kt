@@ -2,6 +2,7 @@ package dev.andrea.speechprod
 
 import android.content.Context
 import android.util.Log
+import dev.andrea.speechprod.BuildConfig
 import java.io.File
 
 /**
@@ -34,7 +35,16 @@ object ContinuousRecorder {
         recorder  = AudioRecorder(context.applicationContext)
         isRunning = true
 
-        val fileName = "session_p${participantId}_${date}_run_${runId}.wav"
+        val flavorAbbr = when (BuildConfig.FLAVOR) {
+            "wordrepetition"    -> "wr"
+            "nonwordrepetition" -> "nwr"
+            "picturenaming"     -> "pn"
+            "auditorynaming"    -> "an"
+            "conversational"    -> "conv"
+            "lepetitprince"     -> "lpp"
+            else                -> BuildConfig.FLAVOR.lowercase()
+        }
+        val fileName = "session_p${participantId}_${date}_run_${runId}_${flavorAbbr}.wav"
         Log.d(TAG, "Starting → $fileName  participant=$participantId  runId=$runId")
 
         recorder!!.startSessionRecording(

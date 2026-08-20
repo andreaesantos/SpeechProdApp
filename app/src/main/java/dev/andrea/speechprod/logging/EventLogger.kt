@@ -254,10 +254,19 @@ class EventLogger private constructor(
             mutex.withLock {
                 try {
                     val logsDir = ensureLogsDirectory()
+                    val flavorAbbr = when (BuildConfig.FLAVOR) {
+                        "wordrepetition"    -> "wr"
+                        "nonwordrepetition" -> "nwr"
+                        "picturenaming"     -> "pn"
+                        "auditorynaming"    -> "an"
+                        "conversational"    -> "conv"
+                        "lepetitprince"     -> "lpp"
+                        else                -> BuildConfig.FLAVOR.lowercase()
+                    }
                     val fileName = if (is_intermediate) {
-                        "intermediate_p${participantId}_${sessionDate}_run_${runId}.json"
+                        "intermediate_p${participantId}_${sessionDate}_run_${runId}_${flavorAbbr}.json"
                     } else {
-                        "p${participantId}_${sessionDate}_run_${runId}.json"
+                        "p${participantId}_${sessionDate}_run_${runId}_${flavorAbbr}.json"
                     }
                     val logFile = File(logsDir, fileName)
 
