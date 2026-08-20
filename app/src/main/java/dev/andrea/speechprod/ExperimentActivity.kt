@@ -518,7 +518,6 @@ class ExperimentActivity : BaseExperimentActivity() {
                 trialsLeftTextView.text = getString(R.string.trial_counter_format, current, total)
                 trialsLeftTextView.bringToFront()
                 exitButton.bringToFront()
-                reloadButton.visibility = if (clinical) View.GONE else View.VISIBLE
 
                 if (isAuditoryNamingFlavor()) {
                     recordingContainer.visibility = View.VISIBLE
@@ -623,23 +622,16 @@ class ExperimentActivity : BaseExperimentActivity() {
     }
 
     private fun reloadCurrentTrial() {
-        when (experimentState.value) {
-            ExperimentState.TRIAL_VIDEO -> {
-                reloadCurrentVideo()
-            }
-            ExperimentState.SPEECH_PRODUCTION -> {
-                isReloadingTrial = true
-                recordingBgRunnable?.let { handler.removeCallbacks(it) }
-                recordingBgRunnable = null
-                runOnUiThread {
-                    recordingContainer.visibility = View.GONE
-                    playerView.visibility = View.VISIBLE
-                }
-                transitionToState(ExperimentState.TRIAL_VIDEO)
-                handler.post { reloadCurrentVideo() }
-            }
-            else -> { /* do nothing */ }
+        if (experimentState.value != ExperimentState.SPEECH_PRODUCTION) return
+        isReloadingTrial = true
+        recordingBgRunnable?.let { handler.removeCallbacks(it) }
+        recordingBgRunnable = null
+        runOnUiThread {
+            recordingContainer.visibility = View.GONE
+            playerView.visibility = View.VISIBLE
         }
+        transitionToState(ExperimentState.TRIAL_VIDEO)
+        handler.post { reloadCurrentVideo() }
     }
 
     // ── Error handling ────────────────────────────────────────────────────────
