@@ -60,6 +60,7 @@ class ExperimentActivity : BaseExperimentActivity() {
 
     private var imageTimeoutRunnable: Runnable? = null
     private val IMAGE_DISPLAY_MS = 8_000L
+    private var eventsSaved = false
 
     var config: ExperimentConfig.Standard? = null
     var imageQueue: List<String> = emptyList()
@@ -410,6 +411,7 @@ class ExperimentActivity : BaseExperimentActivity() {
             eventLogger.logEvent(EventType.EXPERIMENT_ENDED)
             serialPortHelper.sendEventTrigger(EventType.EXPERIMENT_ENDED)
             eventLogger.saveEvents(true)
+            eventsSaved = true
         } finally {
             finishAffinity()
         }
@@ -421,6 +423,7 @@ class ExperimentActivity : BaseExperimentActivity() {
         serialPortHelper.sendEventTrigger(EventType.RECORDING_END)
         eventLogger.logEvent(EventType.PROTOCOL_FINISHED)
         eventLogger.saveEvents()
+        eventsSaved = true
         finishAffinity()
     }
 
@@ -617,8 +620,10 @@ class ExperimentActivity : BaseExperimentActivity() {
     override fun onDestroy() {
         handler.removeCallbacks(updateTimeRunnable)
         imageTimeoutRunnable?.let { handler.removeCallbacks(it) }
-        ContinuousRecorder.stop()  // ← add this
-        try { eventLogger.saveEvents(true) } catch (_: Exception) {}
+        ContinuousRecorder.stop()
+        if (!eventsSaved) {
+            try { eventLogger.saveEvents(true) } catch (_: Exception) {}
+        }
         serialPortHelper.cleanup()
         super.onDestroy()
     }
