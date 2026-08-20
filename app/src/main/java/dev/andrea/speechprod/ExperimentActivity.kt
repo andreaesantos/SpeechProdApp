@@ -113,7 +113,13 @@ class ExperimentActivity : BaseExperimentActivity() {
         }
 
         exitButton = findViewById(R.id.exitButton)
-        exitButton.setOnClickListener { showExitConfirmDialog() }
+        exitButton.setOnClickListener {
+            if (experimentState.value == ExperimentState.EXPERIMENT_END) {
+                finishProtocol()
+            } else {
+                showExitConfirmDialog()
+            }
+        }
 
         connectionStatusTextView = findViewById(R.id.connectionStatusTextView)
 
@@ -266,9 +272,8 @@ class ExperimentActivity : BaseExperimentActivity() {
 
         // Safety net — idempotent, no-op if already stopped normally
         ContinuousRecorder.stop()
-        eventLogger.logEvent(EventType.RECORDING_END)
 
-        try { eventLogger.saveEvents(true)} catch (_: Exception) {}
+        try { eventLogger.saveEvents(true) } catch (_: Exception) {}
 
         serialPortHelper.cleanup()
         super.onDestroy()
@@ -325,9 +330,7 @@ class ExperimentActivity : BaseExperimentActivity() {
             }
 
             ExperimentState.EXPERIMENT_END -> {
-                ContinuousRecorder.stop()
-                eventLogger.logEvent(EventType.RECORDING_END)
-                finishAffinity()
+                finishProtocol()
             }
 
             ExperimentState.SPEECH_PRODUCTION -> {
@@ -353,20 +356,24 @@ class ExperimentActivity : BaseExperimentActivity() {
     private fun exitExperimentNow() {
         try {
             player?.stop()
-
-            // Stop and save the continuous session recording
             ContinuousRecorder.stop()
-
-            try {
-                eventLogger.logEvent(EventType.EXPERIMENT_ENDED)
-                eventLogger.saveEvents(true)
-            } catch (_: Exception) {}
-
-            try { serialPortHelper.cleanup() } catch (_: Exception) {}
-
+            eventLogger.logEvent(EventType.RECORDING_END)
+            serialPortHelper.sendEventTrigger(EventType.RECORDING_END)
+            eventLogger.logEvent(EventType.EXPERIMENT_ENDED)
+            serialPortHelper.sendEventTrigger(EventType.EXPERIMENT_ENDED)
+            eventLogger.saveEvents(true)
         } finally {
             finishAffinity()
         }
+    }
+
+    private fun finishProtocol() {
+        ContinuousRecorder.stop()
+        eventLogger.logEvent(EventType.RECORDING_END)
+        serialPortHelper.sendEventTrigger(EventType.RECORDING_END)
+        eventLogger.logEvent(EventType.PROTOCOL_FINISHED)
+        eventLogger.saveEvents()
+        finishAffinity()
     }
 
     // ── State changes ─────────────────────────────────────────────────────────
@@ -448,18 +455,8 @@ class ExperimentActivity : BaseExperimentActivity() {
 
             ExperimentState.EXPERIMENT_END -> {
                 eventLogger.logEvent(EventType.EXPERIMENT_ENDED)
-                eventLogger.logEvent(EventType.PROTOCOL_FINISHED)
-                lifecycleScope.launch(Dispatchers.IO) {
-                    serialPortHelper.sendEventTrigger(EventType.EXPERIMENT_ENDED)
-                }
-                eventLogger.saveEvents()
-
-                // Stop and save the continuous session recording
-                //ContinuousRecorder.stop()
-
+                serialPortHelper.sendEventTrigger(EventType.EXPERIMENT_ENDED)
                 progressStore.setLastCompletedIndex(participantId, -1)
-                nextButton.isEnabled = false
-                nextButton.text = getString(R.string.end)
             }
 
             else -> { /* No action needed */ }
@@ -571,17 +568,8 @@ class ExperimentActivity : BaseExperimentActivity() {
             }
 
             ExperimentState.EXPERIMENT_END -> {
-                if (clinical) {
-                    nextButton.visibility = View.VISIBLE
-                    nextButton.isEnabled = true
-                    nextButton.text = getString(R.string.end)
-                    startButton.visibility = View.GONE
-                } else {
-                    startButton.visibility = View.VISIBLE
-                    startButton.isEnabled = true
-                    startButton.text = getString(R.string.end)
-                    nextButton.visibility = View.GONE
-                }
+                nextButton.visibility = View.GONE
+                startButton.visibility = View.GONE
             }
 
             ExperimentState.SPEECH_PRODUCTION -> {
