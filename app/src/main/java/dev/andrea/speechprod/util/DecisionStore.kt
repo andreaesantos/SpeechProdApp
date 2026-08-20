@@ -1,6 +1,7 @@
 package dev.andrea.speechprod.util
 
 import android.content.Context
+import dev.andrea.speechprod.BuildConfig
 import org.json.JSONObject
 import java.io.File
 
@@ -8,7 +9,16 @@ class DecisionStore(private val context: Context) {
 
     private fun runFile(participantId: Int, runId: String): File {
         val runDir = RunStore.getOrCreateRunDir(context, participantId, runId)
-        return File(runDir, "passfail_p${participantId}_run_${runId}.json")
+        val flavorAbbr = when (BuildConfig.FLAVOR) {
+            "wordrepetition"    -> "wr"
+            "nonwordrepetition" -> "nwr"
+            "picturenaming"     -> "pn"
+            "auditorynaming"    -> "an"
+            "conversational"    -> "conv"
+            "lepetitprince"     -> "lpp"
+            else                -> BuildConfig.FLAVOR.lowercase()
+        }
+        return File(runDir, "passfail_p${participantId}_run_${runId}_${flavorAbbr}.json")
     }
 
     private fun allRunDirs(participantId: Int): List<File> {
