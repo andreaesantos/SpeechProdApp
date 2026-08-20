@@ -21,7 +21,9 @@ import androidx.core.view.WindowCompat
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
 import android.util.Log
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.time.LocalDate
 import dev.andrea.perroquet.logging.EventLogger
@@ -59,6 +61,7 @@ class ExperimentActivity : BaseExperimentActivity() {
     private var mode: String = ParticipantInputActivity.MODE_FULL
 
     private var imageTimeoutRunnable: Runnable? = null
+    private var stimulusOffsetJob: Job? = null
     private val IMAGE_DISPLAY_MS = 8_000L
     private var eventsSaved = false
 
@@ -241,6 +244,7 @@ class ExperimentActivity : BaseExperimentActivity() {
         val fileName = File(imagePath).name  // strips any path, keeps "pn1.jpg"
 
         imageTimeoutRunnable?.let { handler.removeCallbacks(it) }
+        stimulusOffsetJob = null
 
         try {
             assets.open("PN_mp4/$fileName").use { inputStream ->
@@ -273,7 +277,7 @@ class ExperimentActivity : BaseExperimentActivity() {
             recordingContainer.setBackgroundColor(Color.BLACK)
             Log.d(TAG, "Image timeout -> black screen")
 
-            lifecycleScope.launch(Dispatchers.IO) {
+            stimulusOffsetJob = lifecycleScope.launch(Dispatchers.IO) {
                 eventLogger.logVideoEvent(EventType.STIMULUS_OFFSET, null, currentTrial, fileName)
                 serialPortHelper.sendEventTrigger(EventType.STIMULUS_OFFSET)
             }
@@ -302,12 +306,19 @@ class ExperimentActivity : BaseExperimentActivity() {
         val fileName = imageQueue.getOrNull(resumeStartIndex + currentTrial - 1)
             ?.let { File(it).name } ?: "unknown"
 
-        lifecycleScope.launch(Dispatchers.IO) {
-            eventLogger.logVideoEvent(EventType.STIMULUS_OFFSET, null, currentTrial, fileName)
-            serialPortHelper.sendEventTrigger(EventType.STIMULUS_OFFSET)
+        val existingJob = stimulusOffsetJob
+        if (existingJob != null) {
+            lifecycleScope.launch {
+                existingJob.join()
+                advanceAfterDecision()
+            }
+        } else {
+            lifecycleScope.launch(Dispatchers.IO) {
+                eventLogger.logVideoEvent(EventType.STIMULUS_OFFSET, null, currentTrial, fileName)
+                serialPortHelper.sendEventTrigger(EventType.STIMULUS_OFFSET)
+                withContext(Dispatchers.Main) { advanceAfterDecision() }
+            }
         }
-
-        advanceAfterDecision()
     }
 
     // ── State changes ─────────────────────────────────────────────────────────
@@ -379,11 +390,19 @@ class ExperimentActivity : BaseExperimentActivity() {
                     recordingContainer.visibility = View.GONE
                     val fileName = imageQueue.getOrNull(resumeStartIndex + currentTrial - 1)
                         ?.let { File(it).name } ?: "unknown"
-                    lifecycleScope.launch(Dispatchers.IO) {
-                        eventLogger.logVideoEvent(EventType.STIMULUS_OFFSET, null, currentTrial, fileName)
-                        serialPortHelper.sendEventTrigger(EventType.STIMULUS_OFFSET)
+                    val existingJob = stimulusOffsetJob
+                    if (existingJob != null) {
+                        lifecycleScope.launch {
+                            existingJob.join()
+                            advanceAfterDecision()
+                        }
+                    } else {
+                        lifecycleScope.launch(Dispatchers.IO) {
+                            eventLogger.logVideoEvent(EventType.STIMULUS_OFFSET, null, currentTrial, fileName)
+                            serialPortHelper.sendEventTrigger(EventType.STIMULUS_OFFSET)
+                            withContext(Dispatchers.Main) { advanceAfterDecision() }
+                        }
                     }
-                    advanceAfterDecision()
                 }
             }
             ExperimentState.EXPERIMENT_END -> finishProtocol()
