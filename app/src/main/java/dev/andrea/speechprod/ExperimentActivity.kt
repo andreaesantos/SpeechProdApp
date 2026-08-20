@@ -80,6 +80,7 @@ class ExperimentActivity : BaseExperimentActivity() {
     }
 
     private var isReloadingTrial = false
+    private var eventsSaved = false
 
     // Event logger and serial port helper
     private lateinit var eventLogger: EventLogger
@@ -273,7 +274,9 @@ class ExperimentActivity : BaseExperimentActivity() {
         // Safety net — idempotent, no-op if already stopped normally
         ContinuousRecorder.stop()
 
-        try { eventLogger.saveEvents(true) } catch (_: Exception) {}
+        if (!eventsSaved) {
+            try { eventLogger.saveEvents(true) } catch (_: Exception) {}
+        }
 
         serialPortHelper.cleanup()
         super.onDestroy()
@@ -365,6 +368,7 @@ class ExperimentActivity : BaseExperimentActivity() {
             eventLogger.logEvent(EventType.EXPERIMENT_ENDED)
             serialPortHelper.sendEventTrigger(EventType.EXPERIMENT_ENDED)
             eventLogger.saveEvents(true)
+            eventsSaved = true
         } finally {
             finishAffinity()
         }
@@ -376,6 +380,7 @@ class ExperimentActivity : BaseExperimentActivity() {
         serialPortHelper.sendEventTrigger(EventType.RECORDING_END)
         eventLogger.logEvent(EventType.PROTOCOL_FINISHED)
         eventLogger.saveEvents()
+        eventsSaved = true
         finishAffinity()
     }
 
