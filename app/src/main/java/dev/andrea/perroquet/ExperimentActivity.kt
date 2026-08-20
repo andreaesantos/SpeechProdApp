@@ -473,7 +473,6 @@ class ExperimentActivity : BaseExperimentActivity() {
                 trialsLeftTextView.visibility = View.VISIBLE
                 trialsLeftTextView.text = getString(R.string.trial_counter_format, current, total)
                 trialsLeftTextView.bringToFront()
-                reloadButton.visibility = if (clinical) View.GONE else View.VISIBLE
                 passButton.visibility = if (clinical) View.GONE else View.VISIBLE
                 failButton.visibility = if (clinical) View.GONE else View.VISIBLE
 
@@ -537,52 +536,6 @@ class ExperimentActivity : BaseExperimentActivity() {
             }
         }
     }
-
-    // ── Video ─────────────────────────────────────────────────────────────────
-
-    private fun reloadCurrentVideo() {
-        val p = playerView.player ?: return
-        try {
-            p.seekTo(0)
-            p.play()
-            Log.d(TAG, "Reloaded current video (seekTo 0)")
-            lifecycleScope.launch(Dispatchers.IO) {
-                try {
-                    eventLogger.logVideoEvent(
-                        dev.andrea.speechprod.logging.EventType.STIMULUS_ONSET,
-                        null, currentTrial, currentVideoId()
-                    )
-                    serialPortHelper.sendEventTrigger(dev.andrea.speechprod.logging.EventType.STIMULUS_ONSET)
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error logging reload onset: ${e.message}")
-                }
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to reload current video: ${e.message}", e)
-            Toast.makeText(this, getString(R.string.impossible_recharger_video), Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    private fun reloadCurrentTrial() {
-        when (experimentState.value) {
-            ExperimentState.TRIAL_VIDEO -> {
-                reloadCurrentVideo()
-            }
-            ExperimentState.SPEECH_PRODUCTION -> {
-                isReloadingTrial = true
-                recordingBgRunnable?.let { handler.removeCallbacks(it) }
-                recordingBgRunnable = null
-                runOnUiThread {
-                    recordingContainer.visibility = View.GONE
-                    playerView.visibility = View.VISIBLE
-                }
-                transitionToState(ExperimentState.TRIAL_VIDEO)
-                handler.post { reloadCurrentVideo() }
-            }
-            else -> { /* do nothing */ }
-        }
-    }
-
 
     // ── Error handling ────────────────────────────────────────────────────────
 
