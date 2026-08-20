@@ -354,8 +354,8 @@ class SerialPortHelper(private val context: Context) {
                     else             -> TriggerCode.EXPERIMENT_START // Fallback to 1
                 }
             }
-            dev.andrea.speechprod.logging.EventType.EXPERIMENT_END -> {
-                // Dynamically change code based on build flavor
+            dev.andrea.speechprod.logging.EventType.EXPERIMENT_END,
+            dev.andrea.speechprod.logging.EventType.EXPERIMENT_ENDED -> {
                 when (BuildConfig.FLAVOR) {
                     "conversational" -> 211
                     "auditorynaming" -> 212
