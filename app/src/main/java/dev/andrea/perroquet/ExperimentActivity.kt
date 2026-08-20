@@ -321,7 +321,6 @@ class ExperimentActivity : BaseExperimentActivity() {
 
             ExperimentState.SPEECH_PRODUCTION -> {
                 // Nothing to do — pass/fail buttons already enabled in showImageForTrial()
-                eventLogger.logEvent(EventType.TRIAL_END)
             }
 
             ExperimentState.EXPERIMENT_END -> {
@@ -338,6 +337,9 @@ class ExperimentActivity : BaseExperimentActivity() {
     // ── Trial advancement ─────────────────────────────────────────────────────
 
     private fun advanceAfterDecision() {
+        eventLogger.logEvent(EventType.TRIAL_END)
+        serialPortHelper.sendEventTrigger(EventType.TRIAL_END)
+
         val absoluteIndex = resumeStartIndex + (currentTrial - 1)
         progressStore.setLastCompletedIndex(participantId, absoluteIndex)
         Log.d(TAG, "Saved progress: participant=$participantId absoluteIndex=$absoluteIndex")
