@@ -23,6 +23,7 @@ import dev.andrea.perroquet.util.DecisionStore
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.saveable.rememberSaveable
 import dev.andrea.perroquet.util.VideoProgressStore
@@ -228,6 +229,7 @@ private fun ParticipantIdScreen(
     var expanded by remember { mutableStateOf(false) }
     val registeredNames = remember { getRegisteredNames() }
     val isIdLocked = remember(participantNameText) { onLoadIdByName(participantNameText) != null }
+    var idFieldFocused by remember { mutableStateOf(false) }
 
     LaunchedEffect(initialParticipantId) {
         if (participantIdText.isBlank()) {
@@ -236,21 +238,6 @@ private fun ParticipantIdScreen(
                 participantIdText = pid.toString()
                 participantNameText = onLoadName(pid)
             }
-        }
-    }
-
-    LaunchedEffect(participantIdText) {
-        val pid = participantIdText.toIntOrNull()
-        if (pid != null && ExperimentConfig.isValidParticipantId(pid)) {
-            val name = onLoadName(pid)
-            if (name.isNotBlank()) participantNameText = name
-        }
-    }
-
-    LaunchedEffect(participantNameText) {
-        if (participantNameText.isNotBlank()) {
-            val pid = onLoadIdByName(participantNameText)
-            if (pid != null) participantIdText = pid.toString()
         }
     }
 
@@ -284,7 +271,19 @@ private fun ParticipantIdScreen(
                 else idError?.let { Text(it) }
             },
             enabled = !isIdLocked,
-            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 8.dp)
+                .onFocusChanged { focusState ->
+                    if (!focusState.isFocused && idFieldFocused) {
+                        val pid = participantIdText.toIntOrNull()
+                        if (pid != null && ExperimentConfig.isValidParticipantId(pid)) {
+                            val name = onLoadName(pid)
+                            if (name.isNotBlank()) participantNameText = name
+                        }
+                    }
+                    idFieldFocused = focusState.isFocused
+                }
         )
 
         ExposedDropdownMenuBox(
@@ -326,6 +325,8 @@ private fun ParticipantIdScreen(
                             text = { Text(text = selectionOption) },
                             onClick = {
                                 participantNameText = selectionOption
+                                val pid = onLoadIdByName(selectionOption)
+                                if (pid != null) participantIdText = pid.toString()
                                 expanded = false
                                 nameError = null
                                 idError = null
