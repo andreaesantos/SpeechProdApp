@@ -387,7 +387,8 @@ class ExperimentActivity : BaseExperimentActivity() {
     // ── State changes ─────────────────────────────────────────────────────────
 
     override fun onStateChanged(state: ExperimentState) {
-        if (isReloadingTrial && state == ExperimentState.TRIAL_VIDEO) {
+        val wasReloadingTrial = isReloadingTrial && state == ExperimentState.TRIAL_VIDEO
+        if (wasReloadingTrial) {
             isReloadingTrial = false
         } else {
             super.onStateChanged(state)
@@ -423,7 +424,7 @@ class ExperimentActivity : BaseExperimentActivity() {
         when (state) {
 
             ExperimentState.TRIAL_VIDEO -> {
-                eventLogger.logEvent(EventType.TRIAL_START)
+                if (!wasReloadingTrial) eventLogger.logEvent(EventType.TRIAL_START)
                 if (playerView.player == null && player != null) {
                     playerView.player = player
                 }
@@ -603,11 +604,12 @@ class ExperimentActivity : BaseExperimentActivity() {
             p.seekTo(0)
             p.play()
             Log.d(TAG, "Reloaded current video (seekTo 0)")
+            val videoId = currentVideoId()  // capture on main thread — ExoPlayer is not thread-safe
             lifecycleScope.launch(Dispatchers.IO) {
                 try {
                     eventLogger.logVideoEvent(
                         dev.andrea.speechprod.logging.EventType.STIMULUS_ONSET,
-                        null, currentTrial, currentVideoId()
+                        null, currentTrial, videoId
                     )
                     serialPortHelper.sendEventTrigger(dev.andrea.speechprod.logging.EventType.STIMULUS_ONSET)
                 } catch (e: Exception) {
