@@ -328,6 +328,7 @@ class ExperimentActivity : BaseExperimentActivity() {
         when (state) {
             ExperimentState.TRIAL_VIDEO -> {
                 eventLogger.logEvent(EventType.TRIAL_START)
+                serialPortHelper.sendEventTrigger(EventType.TRIAL_START)
                 showImageForTrial()
             }
 
