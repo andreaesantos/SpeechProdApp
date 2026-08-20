@@ -334,7 +334,8 @@ class SerialPortHelper(private val context: Context) {
     fun sendEventTrigger(eventType: dev.andrea.perroquet.logging.EventType): Boolean {
         val triggerCode = when (eventType) {
             dev.andrea.perroquet.logging.EventType.EXPERIMENT_START -> TriggerCode.EXPERIMENT_START
-            dev.andrea.perroquet.logging.EventType.EXPERIMENT_END -> TriggerCode.EXPERIMENT_END
+            dev.andrea.perroquet.logging.EventType.EXPERIMENT_END,
+            dev.andrea.perroquet.logging.EventType.EXPERIMENT_ENDED -> TriggerCode.EXPERIMENT_END
             dev.andrea.perroquet.logging.EventType.BLOCK_START -> TriggerCode.BLOCK_START
             dev.andrea.perroquet.logging.EventType.BLOCK_END -> TriggerCode.BLOCK_END
             dev.andrea.perroquet.logging.EventType.TRIAL_START -> TriggerCode.TRIAL_START

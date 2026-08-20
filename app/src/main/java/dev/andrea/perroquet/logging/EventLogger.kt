@@ -37,6 +37,8 @@ data class ExperimentEvent(
 enum class EventType {
     EXPERIMENT_START,
     EXPERIMENT_END,
+    EXPERIMENT_ENDED,
+    PROTOCOL_FINISHED,
     BLOCK_START,
     BLOCK_END,
     TRIAL_START,
@@ -278,9 +280,9 @@ class EventLogger private constructor(
                 try {
                     val logsDir = ensureLogsDirectory()
                     val fileName = if (is_intermediate) {
-                        "intermediate_p${participantId}_${sessionDate}_run_${runId}.json"
+                        "intermediate_p${participantId}_${sessionDate}_run_${runId}_pn.json"
                     } else {
-                        "p${participantId}_${sessionDate}_run_${runId}.json"
+                        "p${participantId}_${sessionDate}_run_${runId}_pn.json"
                     }
                     val logFile = File(logsDir, fileName)
 

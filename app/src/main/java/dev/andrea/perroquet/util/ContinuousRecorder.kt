@@ -70,7 +70,7 @@ object ContinuousRecorder {
 
 
 
-        val fileName = "session_p${participantId}_${date}_run_${runId}.wav"
+        val fileName = "session_p${participantId}_${date}_run_${runId}_pn.wav"
 
         Log.d(TAG, "Starting → $fileName participant=$participantId runId=$runId")
 

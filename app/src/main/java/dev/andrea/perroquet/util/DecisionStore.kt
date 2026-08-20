@@ -8,7 +8,7 @@ class DecisionStore(private val context: Context) {
 
     private fun runFile(participantId: Int, runId: String): File {
         val runDir = RunStore.getOrCreateRunDir(context, participantId, runId)
-        return File(runDir, "passfail_p${participantId}_run_${runId}.json")
+        return File(runDir, "passfail_p${participantId}_run_${runId}_pn.json")
     }
 
     private fun allRunDirs(participantId: Int): List<File> {
