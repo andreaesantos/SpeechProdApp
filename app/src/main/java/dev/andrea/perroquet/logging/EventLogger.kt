@@ -23,6 +23,7 @@ data class ExperimentEvent(
     val absoluteTime: Long = System.currentTimeMillis(),
     val relativeTime: Long,
     val type: EventType,
+    val triggerCode: Int? = null,
     val blockNumber: Int? = null,
     val trialNumber: Int? = null,
     val videoName: String? = null,
@@ -92,6 +93,23 @@ class EventLogger private constructor(
         }
     }
 
+    private fun getTriggerCodeForType(type: EventType): Int? = when (type) {
+        EventType.EXPERIMENT_START  -> 101
+        EventType.EXPERIMENT_END,
+        EventType.EXPERIMENT_ENDED  -> 200
+        EventType.BLOCK_START       -> 10
+        EventType.BLOCK_END         -> 15
+        EventType.TRIAL_START       -> 20
+        EventType.TRIAL_END         -> 25
+        EventType.STIMULUS_ONSET    -> 30
+        EventType.STIMULUS_OFFSET   -> 35
+        EventType.FIXATION_START    -> 40
+        EventType.FIXATION_END      -> 45
+        EventType.RECORDING_START   -> 50
+        EventType.RECORDING_END     -> 55
+        else                        -> null
+    }
+
     /**
      * Set experiment metadata
      */
@@ -134,6 +152,7 @@ class EventLogger private constructor(
         events.add(
             ExperimentEvent(
                 type = type,
+                triggerCode = getTriggerCodeForType(type),
                 relativeTime = SystemClock.elapsedRealtime() - experimentStartTime
             )
         )
@@ -156,6 +175,7 @@ class EventLogger private constructor(
         events.add(
             ExperimentEvent(
                 type = EventType.STATE_CHANGE,
+                triggerCode = getTriggerCodeForType(EventType.STATE_CHANGE),
                 state = state,
                 relativeTime = SystemClock.elapsedRealtime() - experimentStartTime
             )
@@ -170,6 +190,7 @@ class EventLogger private constructor(
         events.add(
             ExperimentEvent(
                 type = type,
+                triggerCode = getTriggerCodeForType(type),
                 blockNumber = blockNumber,
                 relativeTime = SystemClock.elapsedRealtime() - experimentStartTime
             )
@@ -184,6 +205,7 @@ class EventLogger private constructor(
         events.add(
             ExperimentEvent(
                 type = type,
+                triggerCode = getTriggerCodeForType(type),
                 blockNumber = blockNumber,
                 trialNumber = trialNumber,
                 relativeTime = SystemClock.elapsedRealtime() - experimentStartTime
@@ -199,6 +221,7 @@ class EventLogger private constructor(
         events.add(
             ExperimentEvent(
                 type = type,
+                triggerCode = getTriggerCodeForType(type),
                 blockNumber = blockNumber,
                 trialNumber = trialNumber,
                 videoName = videoName,
@@ -219,6 +242,7 @@ class EventLogger private constructor(
         events.add(
             ExperimentEvent(
                 type = type,
+                triggerCode = getTriggerCodeForType(type),
                 trialNumber = trialNumber,
                 audioFileName = audioFileName,
                 relativeTime = SystemClock.elapsedRealtime() - experimentStartTime
@@ -237,6 +261,7 @@ class EventLogger private constructor(
         events.add(
             ExperimentEvent(
                 type = EventType.ERROR,
+                triggerCode = getTriggerCodeForType(EventType.ERROR),
                 relativeTime = SystemClock.elapsedRealtime() - experimentStartTime,
                 details = details?.plus("message" to message) ?: mapOf("message" to message)
             )
