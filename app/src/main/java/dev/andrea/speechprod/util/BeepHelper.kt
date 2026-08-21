@@ -18,13 +18,13 @@ object BeepHelper {
     private const val BEEP_GAP_MS = 200L      // gap between beeps
     private const val NUM_BEEPS = 4
 
-    suspend fun playAlignmentBeeps() = withContext(Dispatchers.IO) {
+    suspend fun playAlignmentBeeps(count: Int = NUM_BEEPS) = withContext(Dispatchers.IO) {
         try {
-            repeat(NUM_BEEPS) { i ->
+            repeat(count) { i ->
                 playBeep()
-                if (i < NUM_BEEPS - 1) delay(BEEP_GAP_MS)
+                if (i < count - 1) delay(BEEP_GAP_MS)
             }
-            Log.d(TAG, "Alignment beeps completed")
+            Log.d(TAG, "Alignment beeps completed ($count)")
         } catch (e: Exception) {
             Log.e(TAG, "Error playing alignment beeps: ${e.message}")
         }
