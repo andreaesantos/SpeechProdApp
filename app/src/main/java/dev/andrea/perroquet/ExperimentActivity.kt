@@ -378,6 +378,7 @@ class ExperimentActivity : BaseExperimentActivity() {
                 eventLogger.logEvent(EventType.RECORDING_START)
                 lifecycleScope.launch(Dispatchers.IO) {
                     serialPortHelper.sendEventTrigger(EventType.EXPERIMENT_START)
+                    serialPortHelper.sendEventTrigger(EventType.RECORDING_START)
                 }
                 hideSystemUI()
                 startNextTrial()
