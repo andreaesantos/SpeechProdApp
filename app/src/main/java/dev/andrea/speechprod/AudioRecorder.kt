@@ -76,8 +76,7 @@ class AudioRecorder(context: Context) {
         if (isRecording) { onError("Recording already in progress"); return }
 
         try {
-            val runDir    = RunStore.getOrCreateRunDir(context, participantId, runId)
-            val outputDir = File(runDir, "audio").apply { mkdirs() }
+            val outputDir = RunStore.getOrCreateRunDir(context, participantId, runId)
             outputFile    = File(outputDir, fileName)
             Log.d(TAG, "Session recording output: ${outputFile?.absolutePath}")
 
