@@ -22,14 +22,12 @@ import androidx.media3.ui.PlayerView
 import kotlinx.coroutines.Dispatchers
 import android.util.Log
 import kotlinx.coroutines.launch
-import java.io.File
 import java.time.LocalDate
 import dev.andrea.speechprod.logging.EventLogger
 import dev.andrea.speechprod.logging.EventType
 import dev.andrea.speechprod.usbserial.SerialPortHelper
 import dev.andrea.speechprod.util.SessionVideoLoader
 import dev.andrea.speechprod.util.VideoProgressStore
-import dev.andrea.speechprod.util.RunStore
 import dev.andrea.speechprod.util.FallbackParticipantIdGenerator
 
 
@@ -155,12 +153,7 @@ class ExperimentActivity : BaseExperimentActivity() {
             }
         }
 
-        val runDir = RunStore.getOrCreateRunDir(
-            context = this, // or 'context' depending on what's available there
-            participantId = participantId,
-            runNumber = runId
-        )
-        val logDir = File(runDir, "logs").apply { mkdirs() }
+
 
         val allVideos = videoLoader.loadVideosInOrder()
 
@@ -239,7 +232,7 @@ class ExperimentActivity : BaseExperimentActivity() {
 
         startButton.visibility = View.GONE
 
-        eventLogger = EventLogger.initialize(this, this.experimentStartTime, logDir)
+        eventLogger = EventLogger.initialize(this, this.experimentStartTime)
         eventLogger.clearEvents()
         eventLogger.setExperimentInfo(participantId, dateString, runId)
 

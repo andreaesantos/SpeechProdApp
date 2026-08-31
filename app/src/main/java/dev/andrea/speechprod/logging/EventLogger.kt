@@ -59,7 +59,6 @@ enum class EventType {
 class EventLogger private constructor(
     private val context: Context,
     private val experimentStartTime: Long,
-    private val logDir: File
 ) {
     private val events = CopyOnWriteArrayList<ExperimentEvent>()
     private val mutex = Mutex()
@@ -74,9 +73,9 @@ class EventLogger private constructor(
         private const val TAG = "EventLogger"
         private var instance: EventLogger? = null
 
-        fun initialize(context: Context, experimentStartTime: Long, logDir: File): EventLogger {
+        fun initialize(context: Context, experimentStartTime: Long): EventLogger {
             return instance ?: synchronized(this) {
-                instance ?: EventLogger(context.applicationContext, experimentStartTime, logDir)
+                instance ?: EventLogger(context.applicationContext, experimentStartTime)
                     .also { instance = it }
             }
         }
