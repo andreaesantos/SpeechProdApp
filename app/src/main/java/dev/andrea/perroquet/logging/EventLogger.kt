@@ -311,42 +311,19 @@ class EventLogger private constructor(
      * Ensure the logs directory exists
      */
     private fun ensureLogsDirectory(): File {
-        val runDir = RunStore.getOrCreateRunDir(
+        return RunStore.getOrCreateRunDir(
             context = context,
             participantId = participantId,
             runNumber = runId
         )
-        val logsDir = File(runDir, "logs")
-
-        if (!logsDir.exists()) {
-            if (logsDir.mkdirs()) {
-                Log.d(TAG, "Created logs directory: ${logsDir.absolutePath}")
-            } else {
-                Log.e(TAG, "Failed to create logs directory: ${logsDir.absolutePath}")
-            }
-        }
-        return logsDir
     }
 
-    /**
-     * Get the audio directory
-     */
     fun getAudioDirectory(): File {
-        val runDir = RunStore.getOrCreateRunDir(
+        return RunStore.getOrCreateRunDir(
             context = context,
             participantId = participantId,
             runNumber = runId
         )
-        val audioDir = File(runDir, "audio")
-
-        if (!audioDir.exists()) {
-            if (audioDir.mkdirs()) {
-                Log.d(TAG, "Created audio directory: ${audioDir.absolutePath}")
-            } else {
-                Log.e(TAG, "Failed to create audio directory: ${audioDir.absolutePath}")
-            }
-        }
-        return audioDir
     }
 
     /**
