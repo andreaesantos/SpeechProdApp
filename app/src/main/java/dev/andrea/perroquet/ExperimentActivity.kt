@@ -31,7 +31,6 @@ import dev.andrea.perroquet.logging.EventType
 import dev.andrea.perroquet.usbserial.SerialPortHelper
 import dev.andrea.perroquet.util.SessionStimuliLoader
 import dev.andrea.perroquet.util.VideoProgressStore
-import dev.andrea.perroquet.util.RunStore
 import dev.andrea.perroquet.util.FallbackParticipantIdGenerator
 
 class ExperimentActivity : BaseExperimentActivity() {
@@ -139,13 +138,6 @@ class ExperimentActivity : BaseExperimentActivity() {
             }
         }
 
-        val runDir = RunStore.getOrCreateRunDir(
-            context = this,
-            participantId = participantId,
-            runNumber = runId
-        )
-        val logDir = File(runDir, "logs").apply { mkdirs() }
-
         val allImages = stimuliLoader.loadStimuliInOrder()
 
         imageQueue = if (mode == ParticipantInputActivity.MODE_PASSED_ONLY) {
@@ -212,7 +204,7 @@ class ExperimentActivity : BaseExperimentActivity() {
         applyModeToButtons()
         startButton.visibility = View.GONE
 
-        eventLogger = EventLogger.initialize(this, this.experimentStartTime, logDir)
+        eventLogger = EventLogger.initialize(this, this.experimentStartTime)
         eventLogger.clearEvents()
         eventLogger.setExperimentInfo(participantId, dateString, runId)
 
