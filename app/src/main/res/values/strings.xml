@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">speechprod</string>
+    <string name="app_name">NEW speechprod</string>
     <string name="instruction_demo_description">Démo d’instructions montrant l’interface de l’expérience</string>
 
     <!-- Debug/status labels (si tu les affiches) -->

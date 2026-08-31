@@ -15,7 +15,7 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "dev.andrea.speechprod"
+        applicationId = "dev.andrea.NEW_speechprod"
         minSdk = 24
         targetSdk = 35
         versionCode = 2
@@ -27,48 +27,48 @@ android {
     productFlavors {
         create("wordrepetition") {
             dimension = "task"
-            applicationId = "dev.andrea.wordrepetition"
+            applicationId = "dev.andrea.NEW_wordrepetition"
             versionNameSuffix = "-wordrepetition"
-            resValue("string", "app_name", "Word Repetition Task")
+            resValue("string", "app_name", "NEW Word Repetition Task")
             resValue("string", "video_assets_dir", "WR_mp4")
         }
         create("nonwordrepetition") {
             dimension = "task"
-            applicationId = "dev.andrea.nonwordrepetition"
+            applicationId = "dev.andrea.NEW_nonwordrepetition"
             versionNameSuffix = "-nonwordrepetition"
-            resValue("string", "app_name", "Nonword Repetition Task")
+            resValue("string", "app_name", "NEW Nonword Repetition Task")
             resValue("string", "video_assets_dir", "NW_mp4")
 
         }
         create("picturenaming") {
             dimension = "task"
-            applicationId = "dev.andrea.picturenaming"
+            applicationId = "dev.andrea.NEW_picturenaming"
             versionNameSuffix = "-picnaming"
-            resValue("string", "app_name", "Picture Naming Task")
+            resValue("string", "app_name", "NEW Picture Naming Task")
             resValue("string", "video_assets_dir", "PN_mp4")
 
         }
         create("auditorynaming") {
             dimension = "task"
-            applicationId = "dev.andrea.auditortynaming"
+            applicationId = "dev.andrea.NEW_auditortynaming"
             versionNameSuffix = "-audnaming"
-            resValue("string", "app_name", "Auditory Naming Task")
+            resValue("string", "app_name", "NEW Auditory Naming Task")
             resValue("string", "video_assets_dir", "AN_mp4")
 
         }
         create("conversational") {
             dimension = "task"
-            applicationId = "dev.andrea.conversational"
+            applicationId = "dev.andrea.NEW_conversational"
             versionNameSuffix = "-convo"
-            resValue("string", "app_name", "Conversational Task")
+            resValue("string", "app_name", "NEW Conversational Task")
             resValue("string", "video_assets_dir", "NC_mp4")
 
         }
         create("lepetitprince") {
             dimension = "task"
-            applicationId = "dev.andrea.lepetitprince"
+            applicationId = "dev.andrea.NEW_lepetitprince"
             versionNameSuffix = "lepetitprince"
-            resValue("string", "app_name", "Le Petit Prince Conversational Task")
+            resValue("string", "app_name", "NEW Le Petit Prince Conversational Task")
             resValue("string", "video_assets_dir", "Le_Petit_Prince_scenes")
 
         }
