@@ -375,10 +375,8 @@ class ExperimentActivity : BaseExperimentActivity() {
         when (experimentState.value) {
             ExperimentState.IDLE -> {
                 eventLogger.logEvent(EventType.EXPERIMENT_START)
-                eventLogger.logEvent(EventType.RECORDING_START)
                 lifecycleScope.launch(Dispatchers.IO) {
                     serialPortHelper.sendEventTrigger(EventType.EXPERIMENT_START)
-                    serialPortHelper.sendEventTrigger(EventType.RECORDING_START)
                 }
                 hideSystemUI()
                 startNextTrial()
@@ -424,17 +422,16 @@ class ExperimentActivity : BaseExperimentActivity() {
     }
 
     private fun exitExperimentNow() {
-        try {
-            imageTimeoutRunnable?.let { handler.removeCallbacks(it) }
-            ContinuousRecorder.stop()
-            eventLogger.logEvent(EventType.RECORDING_END)
-            serialPortHelper.sendEventTrigger(EventType.RECORDING_END)
-            eventLogger.logEvent(EventType.EXPERIMENT_ENDED)
-            serialPortHelper.sendEventTrigger(EventType.EXPERIMENT_ENDED)
-            eventLogger.saveEvents(true)
-            eventsSaved = true
-        } finally {
-            finishAffinity()
+        imageTimeoutRunnable?.let { handler.removeCallbacks(it) }
+        ContinuousRecorder.stop()
+        eventLogger.logEvent(EventType.RECORDING_END)
+        serialPortHelper.sendEventTrigger(EventType.RECORDING_END)
+        eventLogger.logEvent(EventType.EXPERIMENT_ENDED)
+        serialPortHelper.sendEventTrigger(EventType.EXPERIMENT_ENDED)
+        eventLogger.saveEvents(true)
+        eventsSaved = true
+        lifecycleScope.launch {
+            try { BeepHelper.playAlignmentBeeps(3) } finally { finishAffinity() }
         }
     }
 
@@ -445,7 +442,9 @@ class ExperimentActivity : BaseExperimentActivity() {
         eventLogger.logEvent(EventType.PROTOCOL_FINISHED)
         eventLogger.saveEvents()
         eventsSaved = true
-        finishAffinity()
+        lifecycleScope.launch {
+            try { BeepHelper.playAlignmentBeeps(3) } finally { finishAffinity() }
+        }
     }
 
     // ── UI ────────────────────────────────────────────────────────────────────

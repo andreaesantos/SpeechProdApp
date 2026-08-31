@@ -10,7 +10,7 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "dev.andrea.picnam"
+        applicationId = "dev.andrea.NEW_picnam"
         minSdk = 24
         targetSdk = 35
         versionCode = 2
@@ -35,7 +35,7 @@ android {
     applicationVariants.all {
         outputs.all {
             val output = this as? com.android.build.gradle.internal.api.ApkVariantOutputImpl
-            output?.outputFileName = "pictureNaming-${name}-${defaultConfig.versionName}.apk"
+            output?.outputFileName = "NEW_picnam-${name}-${defaultConfig.versionName}.apk"
         }
     }
 
